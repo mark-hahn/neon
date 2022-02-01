@@ -129,15 +129,8 @@ void initHdlgts(void) {
   TIM2->CR1 |= TIM2_CR1_CEN; // 0x01 enable TM2
 }
 
-void hdlgtsLoop(void) {
-  static u16 lastMsHdl = 0;
-  u16 now = millis();
-  if(now != lastMsHdl) {
-    // runs once every ms
-    lastMsHdl = now;
-    if(hdlgtCounterL && (--hdlgtCounterL == 0)) set16(HDLL_, 0);
-    if(hdlgtCounterR && (--hdlgtCounterR == 0)) set16(HDLR_, 0);
-  }
+void processCurSensAdc(u16 adcVal) {
+
 }
 
 /*
@@ -311,9 +304,5 @@ void initMotors(void) {
 
   TIM1->EGR  = TIM1_EGR_UG;  // force update of registers
   TIM1->CR1 |= TIM1_CR1_CEN; // 0x01 enable TM1
-}
-
-void motorsLoop() {
-
 }
 */

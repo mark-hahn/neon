@@ -12,13 +12,11 @@
 
 @far @interrupt void tim2IntHandler();
 
-// set led brightness, raw pwm units (0 - 1023)
-ledPwm(u16 pwm);
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);
 
 void initLed(void);
-void ledLoop(void);
+void processCurSensAdc(u16 adcVal);
 
 #endif  // _LED_
 

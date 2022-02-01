@@ -5,13 +5,9 @@
 #include "stm8s.h"
 #include "main.h"
 #include "gpio.h"
-#include "hdlgts.h"
-#include "motors.h"
 #include "adc.h"
-#include "output.h"
-#include "i2c.h"
-#include "command.h"
-#include "clock.h"
+#include "input.h"
+#include "led.h"
 
 void main(void) {
 //  while(true);  // disable mcu
@@ -20,28 +16,15 @@ void main(void) {
   CLK->CKDIVR   = 0;
 
   initAdc();
-  initHdlgts();
-  initMotors();
-  initOutput();
-  initClock();
-  initI2c();
-  initCommand();
+  initInput();
+  initLed();
 
-  ints_on; // enable clock and i2c interrupts
+  ints_on; // enable all interrupts
 
-  // quick power-on beep
-  // beep(250);
-
-  // foreground event loop
-	while (true) { 
-    adcLoop();
-    hdlgtsLoop();    
-    motorsLoop();    
-    outputLoop();
-    clockLoop();    
-    i2cLoop();    
-    commandLoop();
-  }
+  // everything is interrupt driven
+  // so from now on all code runs in int mode
+  // in low-power wait mode until interrupt
+  while(true) wait();
 }
 
 #define DBG_BUF_SIZE 256
