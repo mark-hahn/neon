@@ -14,7 +14,7 @@
 #define _msk6 0x40
 #define _msk7 0x80
 
-/////////////  lgtsens sensor  d5 ///////////////
+/////////////  lgtsens sensor d5 ///////////////
 #define  lgtsens_ptr GPIOD
 #define  lgtsens_mask _msk5
 

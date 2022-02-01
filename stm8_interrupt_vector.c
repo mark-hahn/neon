@@ -29,8 +29,10 @@ struct interrupt_vector const _vectab[] = {
 	
   // ITC->ISPR2
   {0x82, NonHandledInterrupt}, /* irq4  */
-	{0x82, NonHandledInterrupt}, /* irq5  */
-	{0x82, NonHandledInterrupt}, /* irq6  */
+  // rotary encoder C6/C7 pin change
+	{0x82, inputIntHandler},     /* irq5  */
+  // button D2 pin change
+	{0x82, inputIntHandler},     /* irq6  */
 	{0x82, NonHandledInterrupt}, /* irq7  */
 
   // ITC->ISPR3
@@ -42,26 +44,21 @@ struct interrupt_vector const _vectab[] = {
   // ITC->ISPR4
 	{0x82, NonHandledInterrupt}, /* irq12 */
 	{0x82, NonHandledInterrupt}, /* irq13 */
-	{0x82, NonHandledInterrupt}, /* irq14 */
+  // pwm and clock timer (int every 128 usecs)
+	{0x82, tim2IntHandler},      /* irq14 */
 	{0x82, NonHandledInterrupt}, /* irq15 */
 
   // ITC->ISPR5
 	{0x82, NonHandledInterrupt}, /* irq16 */
 	{0x82, NonHandledInterrupt}, /* irq17 */
 	{0x82, NonHandledInterrupt}, /* irq18 */
-
-  // I2C interrupt
-  // runs at priority 2 (ITC_SPR5VECT19SPR, bits 0xc0)
-	{0x82, i2cIntHandler},       /* irq19 I2C*/
+	{0x82, NonHandledInterrupt}, /* irq19 I2C*/
   
   // ITC->ISPR6
   {0x82, NonHandledInterrupt}, /* irq20 */
 	{0x82, NonHandledInterrupt}, /* irq21 */	
   {0x82, NonHandledInterrupt}, /* irq22 */
-
-  // clock timer (int every 128 usecs)
-  // runs at priority 1 (ITC_SPR6VECT23SPR, bits 0xc0)
-	{0x82, tim4IntHandler},      /* irq23 TIM4 */
+	{0x82, NonHandledInterrupt}, /* irq23 TIM4 */
 
   // ITC->ISPR7
 	{0x82, NonHandledInterrupt}, /* irq24 */

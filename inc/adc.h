@@ -1,14 +1,15 @@
 #ifndef __ADC__
 #define __ADC__
 
-#define ADC_NULL 0xffff
+// ambient light sensor (photo-resistor) from adc
+// pre-adjusted by battery voltage
+// called from input.c
+u16 getAmbientLight();
 
-// each adc channel conversion delay
-#define ADC_UPDATE_MS 1 
-
-// headlight sense resistor voltage adc values
-extern u16 hdlgtAdcL;
-extern u16 hdlgtAdcR;
+// led current sensor from adc
+// pre-adjusted by battery voltage
+// called from led.c
+u16 getLedCurrent();
 
 void initAdc(void);
 void adcLoop(void);
