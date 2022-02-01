@@ -16,7 +16,6 @@
 u16 millis(void);
 
 void initLed(void);
-void processCurSensAdc(u16 adcVal);
 
 #endif  // _LED_
 

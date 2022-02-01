@@ -1,6 +1,8 @@
 #ifndef __ADC__
 #define __ADC__
 
+#include "main.h"
+
 // ambient light sensor (photo-resistor) from adc
 // pre-adjusted by battery voltage
 // called from input.c
@@ -12,6 +14,6 @@ u16 getAmbientLight();
 u16 getLedCurrent();
 
 void initAdc(void);
-void adcLoop(void);
+u16 handleAdcInt(void);
  
 #endif

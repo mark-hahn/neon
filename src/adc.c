@@ -15,7 +15,7 @@
 u16 lastBsensVal = 0x0200;
 u16 vbatFactor   = 0x0200;  // need to measure
 
-u16 getVbatFactor() {
+u16 setVbatFactor() {
   // TO-DO measure adc for different vbat
   // to-do read vbat adc
 }
@@ -23,7 +23,7 @@ u16 getVbatFactor() {
 u8 curAdcChan = 2; // channel being converted
 
 void startAdcChan(u8 chan) {
-  curAdcChan = chan;
+  if(chan != CURSENS_CH) curAdcChan = chan;
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
   ADC1->CR1 |= ADC1_CR1_ADON; // start conversion
 }
@@ -92,17 +92,20 @@ void initAdc(void) {
 }
 
 // called from timer int in led.c
-void adcLoop(void) {
+// returns led cur sens value
+u16 handleAdcInt(void) {
+  u16 curSensAdcVal;
   // wait for previous BSENS_CH or LGTSENS_CH conversion
   // save adc value
   if(curAdcChan == BSENS_CH) lastBsensVal   = waitForAdc(); 
   else                       lastLgtsensVal = waitForAdc(); 
 
   startAdcChan(CURSENS_CH);
-  // get led current adc val and call led.c to process it
-  processCurSensAdc(waitForAdc());
+  curSensAdcVal = waitForAdc();
 
   // start next conversion to run between interrupts;
   if(curAdcChan == BSENS_CH) startAdcChan(LGTSENS_CH); 
   else                       startAdcChan(BSENS_CH); 
+
+  return curSensAdcVal;
 }
