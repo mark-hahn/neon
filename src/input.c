@@ -1,9 +1,67 @@
 #include "stm8s.h"
 #include "main.h"
 #include "gpio.h"
+#include "eeprom.h"
 
-// neon operation modes
-#MODE_NORMAL 0 // always on, knob sets brightness
+// brightness (0..7)  is 2^^(brightness-1) ma,  1/2..64 ma
+#define BRIGHTNESS_MAX 7 
+
+// speed (0..10) is 2^^(speed-4) secs,  1/16..64 secs per action
+#define SPEED_MAX      10 
+
+#define EEPROM_CHK_BYTE 0x5a
+
+// operation modes
+enum {
+  modeNormal,
+  modeNightLight,
+  modeAnim
+}
+
+enum {
+  blinkAnim,     // obnoxious blinking animation, instant rise/fall
+  blinkSoftAnim, // blinking animation with rise/fall action speed
+  // ... more animation modes
+  numAnims
+}
+
+// setting state of control
+enum {
+  notSetting,   // not changing mode/speed, knob sets brightness
+  settingMode,  // setting mode  with knob
+  settingSpeed  // setting speed with knob
+}
+
+// eeprom addresses
+enum {
+  eeprom_chk_adr,
+  eeprom_brightness_adr,
+  eeprom_mode_adr,
+  eeprom_anim_adr,
+  eeprom_speed_adr
+};
+
+u8 settingState = notSetting;
+u8 brightness   = BRIGHTNESS_MAX;
+u8 mode         = modeNormal;
+u8 anim         = 0;
+u8 speed        = SPEED_MAX / 2;  // 2 secs per action
+
+void eepromInit() {
+  if(getEepromByte(eeprom_chk_adr) != 0x5a) {
+    setEepromByte(eeprom_brightness_adr,  brightness);
+    setEepromByte(eeprom_mode_adr,        mode);
+    setEepromByte(eeprom_anim_adr,        anim);
+    setEepromByte(eeprom_speed_adr,       speed);
+    setEepromByte(eeprom_chk_adr,         0x5a);
+  }
+  else {
+    brightness = getEepromByte(eeprom_brightness_adr);
+    mode       = getEepromByte(eeprom_mode_adr);
+    anim       = getEepromByte(eeprom_anim_adr);
+    speed      = getEepromByte(eeprom_speed_adr);
+  }
+}
 
 // button click (just pressed)
 void buttonPress() {
@@ -44,6 +102,8 @@ void encoderCCW() {
 }
 
 void initInput(void) {
+  eepromInit();
+
   // set button (IRQ6)  interrupt priority to 1 (lowest)
   ITC->ISPR2 = (ITC->ISPR2 & ~0x30) | 0x10; // I1I0 is 0b01 
 

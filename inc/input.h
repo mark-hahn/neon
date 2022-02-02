@@ -1,5 +1,5 @@
-#ifndef __ADC__
-#define __ADC__
+#ifndef __INPUT__
+#define __INPUT__
 
 #include "stm8s.h"
 #include "main.h"
