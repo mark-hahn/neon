@@ -70,8 +70,6 @@ void initAdc(void) {
   startAdc(BSENS_CH); 
 }
 
-u8 curAdcChan = BSENS_CH; // channel being converted
-
 // called from timer int in led.c
 // returns led current, no meaningful units
 u16 handleAdcInt(void) {

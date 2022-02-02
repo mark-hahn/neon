@@ -78,27 +78,68 @@ void encoderCCW() {
 
 }
 
+#define BUTTON_DEBOUNCE_DELAY_MS 10
+
+// called from input interrupts or when pending
+void inputHandler() {
+  static inInputIntHandler   = false;
+  static inputHandlerPending = false;
+
+  // encoder interrupt (priority 2) might happen during handling of
+  // button  interrupt (priority 1) and inputHandler is not re-entrant
+  if(inInputIntHandler) {
+    inputHandlerPending = true;
+    return;
+  } 
+  else {
+    static bool lastBtnWasDown  = false;
+    static u16  lastBtnActivity = 0;
+    static bool btnWaitDebounce = false;
+    bool btnDown;
+
+    static bool lastEncaWasDown  = false;
+    static u16  lastEncaActivity = 0;
+    static bool encaWaitDebounce = false;
+    bool encaDown;
+
+    inInputIntHandler = true;
+    u16 now = millis();
+
+    // check button if no activity for 10ms
+    if(btnWaitDebounce && ((now - lastBtnActivity) > BUTTON_DEBOUNCE_DELAY_MS)
+      btnWaitDebounce = false;
+
+    if(!btnWaitDebounce) {
+      btnDown = button_lvl; 
+      if(btnDown != lastBtnWasDown) {
+        if(btnDown) buttonPress();
+        lastBtnWasDown  = btnDown;
+        lastBtnActivity = now;
+        btnWaitDebounce = true;
+      }
+    }
+
+    // check encoder A if no activity for 10ms
+    if(encaWaitDebounce && ((now - lastEncaActivity) > BUTTON_DEBOUNCE_DELAY_MS)
+      encaWaitDebounce = false;
+
+    if(!encaWaitDebounce) {
+      encaDown = enca_lvl; 
+      if(encaDown != lastEncaWasDown) {
+        if(encb_lvl) encoderCW();
+        else         encoderCCW();
+        lastEncaWasDown  = encaDown;
+        lastEncaActivity = now;
+        encaWaitDebounce = true;
+      }
+    }
+    inInputIntHandler = false;
+  }
+}
+
 // interrupts every button or encoder pin change (ports C and D)
 @far @interrupt void inputIntHandler() {
-  static bool lastBtnDown = false;
-  static bool lastActiveA = false; // used as clock
-  bool btnDown;
-  bool activeA;
-
-  // check button
-  btnDown = button_lvl;         // need debouncing ???
-  if(!lastBtnDown && btnDown) buttonPress;
-  lastBtnDown = btnDown;
-  
-  // check encoder
-  activeA = enca_lvl;           // need debouncing ???
-  if(!lastActiveA && activeA) {
-    // have positive clock edge
-    // check direction
-    if(encb_lvl) encoderCW();  // clockwise
-    else         encoderCCW(); // counter-clockwise
-  }
-  lastActiveA = activeA;
+  inputHandler();
 }
 
 void initInput(void) {
@@ -122,6 +163,9 @@ void initInput(void) {
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
 void inputLoop(void) {
-
+  if(inputHandlerPending) {
+    inputHandlerPending = false;
+    inputIntHandler();
+  }
 }
 

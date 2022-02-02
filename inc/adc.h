@@ -10,6 +10,9 @@
 u16 getAmbientLight();
 
 void initAdc(void);
+
+// called from timer int in led.c
+// returns led current, no meaningful units
 u16 handleAdcInt(void);
  
 #endif
