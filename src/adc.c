@@ -10,50 +10,29 @@
 #define CURSENS_CH   4
 #define LGTSENS_CH   5
 
-// assume 3.7 on startup
-u16 lastBsensVal = 0x0200;
-u16 vbatFactor   = 0x0200;  // need to measure
+ // channel being converted
+u8 curAdcChan = BSENS_CH;
 
-u16 setVbatFactor() {
-  // TO-DO measure adc for different vbat
-  // to-do read vbat adc
-}
-
-u8 curAdcChan = 2; // channel being converted
-
-void startAdcChan(u8 chan) {
+void startAdc(u8 chan) {
   if(chan != CURSENS_CH) curAdcChan = chan;
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
   ADC1->CR1 |= ADC1_CR1_ADON; // start conversion
 }
 
-// wait or conversion to finish and return value
+// wait for conversion to finish and return value
 u16 waitForAdc() {
-  while ((ADC1_CSR->CR1 & ADC1_CSR_EOC) == 0);
+  while ((ADC1->CSR & ADC1_CSR_EOC) == 0);
   ADC1->CSR &= ~ADC1_CSR_EOC; // turn off end-of-conversion flag
   return (ADC1->DRH << 8) | ADC1->DRL;
 }
 
-// led current sensor from adc
-// pre-adjusted by battery voltage
-// called from led.c
-u16 getLedCurrent() {
+lightSens = 0x0200;  // set in handleAdcInt
 
-}
-
-lastLgtsensVal = 0x0200;
-
-u16 getLightAdc() {
-
-}
-
-
-// ambient light sensor (photo-resistor) from adc
-// pre-adjusted by battery voltage
+// ambient light (photo-resistor)
+// meaningless units
 // called from input.c
 u16 getAmbientLight() {
-
-
+  return lightSens;
 }
 
 void initAdc(void) {
@@ -87,24 +66,29 @@ void initAdc(void) {
     // ADC1_CR3_DBUF    ((uint8_t)0x80) /*!< Data Buffer Enable mask
     // ADC1_CR3_OVR     ((uint8_t)0x40) /*!< Overrun Status Flag mask
 
-  startAdcChan(BSENS_CH);  // wake up adc and start first conversion
+  // batterySens must be first, used immediately
+  startAdc(BSENS_CH); 
 }
 
-// called from timer int in led.c
-// returns led cur sens value
-u16 handleAdcInt(void) {
-  u16 curSensAdcVal;
-  // wait for previous BSENS_CH or LGTSENS_CH conversion
-  // save adc value
-  if(curAdcChan == BSENS_CH) lastBsensVal   = waitForAdc(); 
-  else                       lastLgtsensVal = waitForAdc(); 
+u8 curAdcChan = BSENS_CH; // channel being converted
 
-  startAdcChan(CURSENS_CH);
-  curSensAdcVal = waitForAdc();
+// called from timer int in led.c
+// returns led current, no meaningful units
+u16 handleAdcInt(void) {
+  static u16 batteryAdc = 0x0200;
+  u16 current;
+
+  // wait for previous BSENS_CH or LGTSENS_CH conversion
+  if(curAdcChan == BSENS_CH) batteryAdc = waitForAdc(); 
+  else                       lightSens  = waitForAdc(); 
+
+  // current is cursens adc adjusted for battery voltage
+  startAdc(CURSENS_CH);
+  current = waitForAdc() * ((u16 0xffff / batteryAdc) / 2);
 
   // start next conversion to run between interrupts;
-  if(curAdcChan == BSENS_CH) startAdcChan(LGTSENS_CH); 
-  else                       startAdcChan(BSENS_CH); 
+  if(curAdcChan == BSENS_CH) startAdc(LGTSENS_CH); 
+  else                       startAdc(BSENS_CH); 
 
-  return curSensAdcVal;
+  return current;
 }
