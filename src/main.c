@@ -15,8 +15,8 @@ void main(void) {
   // switch high-speed internal oscillator (HSI) to full-speed
   CLK->CKDIVR   = 0;
 
-  initAdc();
   initInput();
+  initAdc();
   initLed();
 
   ints_on; // enable all interrupts

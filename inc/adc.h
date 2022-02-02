@@ -1,6 +1,7 @@
 #ifndef __ADC__
 #define __ADC__
 
+#include "stm8s.h"
 #include "main.h"
 
 // ambient light sensor (photo-resistor) from adc

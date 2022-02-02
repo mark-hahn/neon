@@ -4,13 +4,6 @@
 #define true  1
 #define false 0
 
-// set alternative function register 0, afr0
-// left motor:     tim1_1, tim1_2
-// left headlight: tim2_1
-
-enum { left, right };
-typedef uint8_t side_t;
-
 typedef int8_t   i8;
 typedef int16_t  i16;
 typedef int32_t  i32;

@@ -2,7 +2,6 @@
 #include "stm8s.h"
 #include "main.h"
 #include "gpio.h"
-#include "led.h"
 #include "adc.h"
 
 #define CH_MASK   0x0f  // in ADC1->CSR

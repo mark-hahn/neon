@@ -6,14 +6,12 @@
 
 // pwm is pin a3 -- TIM2_3
 
-#define TIM2_PRESCALE    0  // clocks at full 16 MHz
-#define LED_PWM_MAX   1024  // rolls over every 64 usecs
-#define INTS_PER_MS     16  // pwm freq == 16 KHz (compared to 100 Hz RC)
-
 @far @interrupt void tim2IntHandler();
 
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);
+
+@far @interrupt void inputIntHandler();
 
 void initLed(void);
 
