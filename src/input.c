@@ -27,8 +27,8 @@ enum {
 
 // setting state of control
 enum {
-  notSetting,   // not changing mode/speed, knob sets brightness
-  settingMode,  // setting mode  with knob
+  stateNotSetting,   // not changing mode/speed, knob sets brightness
+  stateSettingAnim,  // setting mode  with knob
   settingSpeed  // setting speed with knob
 }
 
@@ -41,11 +41,12 @@ enum {
   eeprom_speed_adr
 };
 
-u8 settingState = notSetting;
-u8 brightness   = BRIGHTNESS_MAX;
+u8 settingState = stateNotSetting;
 u8 mode         = modeNormal;
-u8 anim         = 0;
-u8 speed        = SPEED_MAX / 2;  // 2 secs per action
+
+i8 brightness   = BRIGHTNESS_MAX;
+i8 anim         = 0;
+i8 speed        = SPEED_MAX / 2;  // 2 secs per action
 
 void eepromInit() {
   if(getEepromByte(eeprom_chk_adr) != 0x5a) {
@@ -68,14 +69,36 @@ void buttonPress() {
 
 }
 
-// forward rotation click
-void encoderCW() {
-
+void adjBrightness(i8 dir) {
+  brightness += dir;       
+  if(brightness == (BRIGHTNESS_MAX+1))
+    brightness = 0;
+  if(brightness == -1)
+    brightness = BRIGHTNESS_MAX;
 }
 
-// backward rotation click
-void encoderCCW() {
+void chgAnim(i8 dir) {
+  anim += dir;       
+  if(anim == (numAnims)) anim = 0;
+  if(anim == -1)         anim = numAnims-1;
+}
 
+void adjSpeed(i8 dir) {
+  speed += dir;       
+  if(speed == (SPEED_MAX+1))
+    speed = 0;
+  if(speed == -1)
+    speed = SPEED_MAX;
+}
+
+// dir is +1 for CW  encoder click
+// dir is -1 for CCW encoder click
+void encoderTurn(i8 dir) {
+  switch(settingState) {
+    case stateNotSetting:  adjBrightness(dir); break;
+    case stateSettingAnim: chgAnim(dir);       break;
+    case settingSpeed:     adjSpeed(dir);      break;
+  }
 }
 
 #define BUTTON_DEBOUNCE_DELAY_MS 10
@@ -126,8 +149,8 @@ void inputHandler() {
     if(!encaWaitDebounce) {
       encaDown = enca_lvl; 
       if(encaDown != lastEncaWasDown) {
-        if(encb_lvl) encoderCW();
-        else         encoderCCW();
+        if(encb_lvl) encoderTurn(+1); // CW
+        else         encoderTurn(-1); // CCW
         lastEncaWasDown  = encaDown;
         lastEncaActivity = now;
         encaWaitDebounce = true;
