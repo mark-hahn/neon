@@ -29,10 +29,12 @@ struct interrupt_vector const _vectab[] = {
 	
   // ITC->ISPR2
   {0x82, NonHandledInterrupt}, /* irq4  */
+
   // rotary encoder C6/C7 pin change
-	{0x82, inputIntHandler},     /* irq5  */
+	{0x82, encoderIntHandler},   /* irq5  */
+
   // button D2 pin change
-	{0x82, inputIntHandler},     /* irq6  */
+	{0x82, buttonIntHandler},    /* irq6  */
 	{0x82, NonHandledInterrupt}, /* irq7  */
 
   // ITC->ISPR3
@@ -44,7 +46,8 @@ struct interrupt_vector const _vectab[] = {
   // ITC->ISPR4
 	{0x82, NonHandledInterrupt}, /* irq12 */
 	{0x82, NonHandledInterrupt}, /* irq13 */
-  // pwm and clock timer (int every 128 usecs)
+
+  // clock timer (int every 64 usecs)
 	{0x82, tim2IntHandler},      /* irq14 */
 	{0x82, NonHandledInterrupt}, /* irq15 */
 

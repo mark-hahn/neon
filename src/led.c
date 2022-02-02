@@ -32,10 +32,9 @@ u16 millis(void) {
     intCounter = 0;
   }
 
-
-
-  // let input run
+  // run these every 64 usec, sort of like a main loop
   inputLoop();
+  animationLoop();
 }
 
 void initLed(void) {
