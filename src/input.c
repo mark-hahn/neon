@@ -123,9 +123,8 @@ void adjSpeed(bool cw) {
 u16 lastClickTime = 0;
 
 void buttonPress() {
-  u16 now = millis();
+  lastClickTime = millis();
   clickCount++;
-  lastClickTime = now;
 }
 
 void encoderTurn(bool cw) {
@@ -140,7 +139,9 @@ void encoderTurn(bool cw) {
 
 // irq6 interrupts every button or encoder pin change (port D)
 @far @interrupt void buttonIntHandler() {
-  static u16 lastBtnActivity = 0;
+  static bool btnWaitDebounce  = false;
+  static u16  lastBtnActivity = 0;
+  static bool lastBtnWasDown  = false;
   u16 now = millis();
   // check button if no activity for 10ms
   if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS)
@@ -159,7 +160,10 @@ void encoderTurn(bool cw) {
 
 // irq5 interrupts every encoder pin change (port C)
 @far @interrupt void encoderIntHandler() {
-  static u16 lastEncaActivity = 0;
+  static bool encaWaitDebounce = false;
+  static u16  lastEncaActivity = 0;
+  static bool lastEncaWasDown  = false;
+
   u16 now = millis();
   if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS)
     encaWaitDebounce = false;
