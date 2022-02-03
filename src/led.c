@@ -24,8 +24,27 @@ u16 millis(void) {
   return ms;
 }
 
+u16 ledCurrentTgt = 0;
+u16 brightness    = 0;
+u16 dimFactor     = NOT_DIMMING_FACTOR;
+
+// sets desired led current based on brightness and dimming
+void setLedCurrentTgt() {
+
+}
+
+// calls handleAdcInt to get led current
+// and uses it to adjust pwm to ledCurrentTgt
+void adjustPwm() {
+   static u16 pwmVal = 0;
+   u16 current = handleAdcInt(); //  TODO -- adjust current for brightness and dimming
+   if(current < ledCurrentTgt && pwmVal < MAX_PWM) pwmVal++;
+   if(current > ledCurrentTgt && pwmVal > 0)       pwmVal--;
+   set16(TIM2_CCR1, pwmVal);
+}
+
 // timer interrupts every 64 usecs
-@far @interrupt void tim2IntHandler();
+@far @interrupt void tim2IntHandler() {
   static u16 intCounter = 0;
   if(++intCounter == INTS_PER_MS) {
     msCounter++;
@@ -33,6 +52,7 @@ u16 millis(void) {
   }
 
   // run these every 64 usec, sort of like a main loop
+  adjustPwm();
   inputLoop();
   animationLoop();
 }

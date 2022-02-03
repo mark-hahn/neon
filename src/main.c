@@ -5,9 +5,10 @@
 #include "stm8s.h"
 #include "main.h"
 #include "gpio.h"
-#include "adc.h"
 #include "input.h"
+#include "adc.h"
 #include "led.h"
+#include "animation.h"
 
 void main(void) {
 //  while(true);  // disable mcu
@@ -18,12 +19,13 @@ void main(void) {
   initInput();
   initAdc();
   initLed();
+  initAnimation();
 
   ints_on; // enable all interrupts
 
   // everything is interrupt driven
   // so from now on all code runs in int mode
-  // in low-power wait mode until interrupt
+  // waits in low-power wait mode until interrupt
   while(true) wait();
 }
 

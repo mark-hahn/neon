@@ -12,7 +12,9 @@ enum {
   numAnims
 }
 
-extern i8 animation;
+extern i8   animation;
+extern i8   animSpeed;
+extern bool flashing;
 
 void resetAnim();
 void doAnim();

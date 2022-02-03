@@ -82,7 +82,7 @@ u16 handleAdcInt(void) {
 
   // current is cursens adc adjusted for battery voltage
   startAdc(CURSENS_CH);
-  current = waitForAdc() * ((u16 0xffff / batteryAdc) / 2);
+  current = waitForAdc() * ((u16 0xffff / batteryAdc) / BAT_FACTOR);
 
   // start next conversion to run between interrupts;
   if(curAdcChan == BSENS_CH) startAdc(LGTSENS_CH); 

@@ -4,6 +4,7 @@
 #include "eeprom.h"
 #include "animation.h"
 #include "input.h"
+#include "led.h"
 
 // brightness (0..7)  is 2^^(brightness-1) ma,  1/2..64 ma
 #define BRIGHTNESS_MAX 7 
@@ -39,22 +40,19 @@ enum {
 u8 settingState = stateNotSetting;
 u8 mode         = modeNormal;
 
-i8 brightness   = BRIGHTNESS_MAX;
-i8 speed        = SPEED_MAX / 2;  // 2 secs per action
-
 void eepromInit() {
   if(getEepromByte(eeprom_chk_adr) != 0x5a) {
     setEepromByte(eeprom_brightness_adr,  brightness);
     setEepromByte(eeprom_mode_adr,        mode);
     setEepromByte(eeprom_anim_adr,        animation);
-    setEepromByte(eeprom_speed_adr,       speed);
+    setEepromByte(eeprom_speed_adr,       animSpeed);
     setEepromByte(eeprom_chk_adr,         0x5a);
   }
   else {
     brightness = getEepromByte(eeprom_brightness_adr);
     mode       = getEepromByte(eeprom_mode_adr);
     animation  = getEepromByte(eeprom_anim_adr);
-    speed      = getEepromByte(eeprom_speed_adr);
+    animSpeed  = getEepromByte(eeprom_speed_adr);
   }
 }
 
@@ -74,9 +72,16 @@ void buttonPress(u8 clickCount) {
       if(clickCount == 1) powerDown();  return;
       if(clickCount == 2) {
         switch(mode) {
-          case modeNormal:            mode = modeNightLight; flash(2); break;
-          case modeNightLight:        mode = modeAnim;       flash(3); break;
-          case modeAnim: resetAnim(); mode = modeNormal;     flash(1); break;
+          case modeNormal:     mode = modeNightLight; flash(2); break;
+          case modeNightLight: mode = modeAnim;       flash(3); break;
+          case modeAnim: 
+            // inputLoop might run doAnim
+            ints_off;
+            resetAnim(); 
+            mode = modeNormal;   
+            ints_on;
+            flash(1); 
+            break;
         }
       }
     }
@@ -98,8 +103,8 @@ void chgAnim(bool cw) {
 }
 
 void adjSpeed(bool cw) {
-  if( cw && speed < SPEED_MAX) speed++;
-  if(!cw && speed > 0)         speed--;
+  if( cw && animSpeed < SPEED_MAX) animSpeed++;
+  if(!cw && animSpeed > 0)         animSpeed--;
 }
 
 void encoderTurn(bool cw) {
