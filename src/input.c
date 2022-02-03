@@ -65,17 +65,9 @@ void powerDown() {
   while(true);
 }
 
-bool countingClicks = false;
-u16  lastClickTime  = 0;
+u8 clickCount = 0;
 
-// button click
-void buttonPress() {
-  static clickCount = 0;
-  if(countingClicks) {
-    clickCount++;
-    lastClickTime = now;
-    return;
-  }
+void clickTimeout() {
   switch(settingState) {
     case stateNotSetting: {
       if(clickCount == 1) powerDown();  return;
@@ -102,6 +94,13 @@ void buttonPress() {
     case stateSettingSpeed: settingState = stateNotSetting;   break;
   }
   clickCount = 0;
+}
+
+u16 lastClickTime = 0;
+
+void buttonPress() {
+  clickCount++;
+  lastClickTime = millis();
 }
 
 void adjBrightness(bool cw) {
@@ -131,6 +130,7 @@ void encoderTurn(bool cw) {
 
 // irq6 interrupts every button or encoder pin change (port D)
 @far @interrupt void buttonIntHandler() {
+  static u16 lastBtnActivity = 0;
   u16 now = millis();
   // check button if no activity for 10ms
   if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS)
@@ -149,8 +149,9 @@ void encoderTurn(bool cw) {
 
 // irq5 interrupts every encoder pin change (port C)
 @far @interrupt void encoderIntHandler() {
+  static u16 lastEncaActivity = 0;
   u16 now = millis();
-  if(encaWaitDebounce && ((now - lastEncaActivity) > BUTTON_DEBOUNCE_DELAY_MS)
+  if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS)
     encaWaitDebounce = false;
 
   if(!encaWaitDebounce) {
@@ -185,13 +186,13 @@ void initInput(void) {
   flash(1);  // indicate mode is normal
 }
 
+#define CLICK_DELAY 300  // timeout for counting clicks
+
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
 void inputLoop(void) {
   u16 now = millis();
-  if(countingClicks && ((now - lastClickTime) > CLICK_DELAY) {
-    countingClicks = false;
-  }
+  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY) clickTimeout();
   if(mode == modeAnim || settinState != stateNotSetting) doAnim();
 }
 
