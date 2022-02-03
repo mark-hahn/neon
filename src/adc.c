@@ -72,6 +72,7 @@ void initAdc(void) {
 
 // called from timer int in led.c
 // returns led current, no meaningful units
+// sort of like a main loop
 u16 handleAdcInt(void) {
   static u16 batteryAdc = 0x0200;
   u16 current;

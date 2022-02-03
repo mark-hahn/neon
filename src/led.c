@@ -5,9 +5,9 @@
 #include "led.h"
 
 #define TIM2_PRESCALE    0  // clocks at full 16 MHz
-#define LED_PWM_MAX   1024  // timer rolls over every 64 usecs
 #define INTS_PER_MS     16  // pwm freq == 16 KHz (compared to 100 Hz RC)
 
+#define LED_PWM_MAX   1024  // timer rolls over every 64 usecs
 #define LED_PWM_L TIM2->CCR1L
 #define LED_PWM_H TIM2->CCR1H
 
@@ -31,27 +31,29 @@ u16 dimFactor     = NOT_DIMMING_FACTOR;
 // sets desired led current based on brightness and dimming
 void setLedCurrentTgt() {
 
+
+
 }
 
 // calls handleAdcInt to get led current
 // and uses it to adjust pwm to ledCurrentTgt
 void adjustPwm() {
    static u16 pwmVal = 0;
-   u16 current = handleAdcInt(); //  TODO -- adjust current for brightness and dimming
+   u16 current = handleAdcInt(); // already adjusted for bat level
    if(current < ledCurrentTgt && pwmVal < MAX_PWM) pwmVal++;
    if(current > ledCurrentTgt && pwmVal > 0)       pwmVal--;
-   set16(TIM2_CCR1, pwmVal);
+   set16(LED_PWM_, pwmVal);
 }
 
 // timer interrupts every 64 usecs
 @far @interrupt void tim2IntHandler() {
+  // used by millis()
   static u16 intCounter = 0;
   if(++intCounter == INTS_PER_MS) {
     msCounter++;
     intCounter = 0;
   }
-
-  // run these every 64 usec, sort of like a main loop
+  // run these each interrupt, sort of like a main loop
   adjustPwm();
   inputLoop();
   animationLoop();
@@ -136,6 +138,8 @@ void initLed(void) {
 // set pins as push-pull outputs
   hdlgtl_out;
   hdlgtr_out;
+
+  set16(LED_PWM_, 0);  // start with pwm of zero
   
   TIM2->EGR  = TIM2_EGR_UG;  // force update of registers
   TIM2->CR1 |= TIM2_CR1_CEN; // 0x01 enable TM2

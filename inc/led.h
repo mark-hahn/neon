@@ -13,10 +13,10 @@
 extern u16 brightness;
 extern u16 dimFactor;
 
-@far @interrupt void tim2IntHandler();
-
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);
+
+@far @interrupt void tim2IntHandler();
 
 void initLed(void);
 

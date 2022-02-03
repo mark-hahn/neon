@@ -65,8 +65,17 @@ void powerDown() {
   while(true);
 }
 
+bool countingClicks = false;
+u16  lastClickTime  = 0;
+
 // button click
-void buttonPress(u8 clickCount) {
+void buttonPress() {
+  static clickCount = 0;
+  if(countingClicks) {
+    clickCount++;
+    lastClickTime = now;
+    return;
+  }
   switch(settingState) {
     case stateNotSetting: {
       if(clickCount == 1) powerDown();  return;
@@ -77,18 +86,22 @@ void buttonPress(u8 clickCount) {
           case modeAnim: 
             // inputLoop might run doAnim
             ints_off;
-            resetAnim(); 
+            stopAnimation(); 
             mode = modeNormal;   
             ints_on;
             flash(1); 
             break;
         }
       }
+      if(clickCount == 3) {
+        settingState == stateSettingAnim;
+      }
     }
     break;
     case stateSettingAnim:  settingState = stateSettingSpeed; break;
     case stateSettingSpeed: settingState = stateNotSetting;   break;
   }
+  clickCount = 0;
 }
 
 void adjBrightness(bool cw) {
@@ -99,7 +112,6 @@ void adjBrightness(bool cw) {
 void chgAnim(bool cw) {
   if( cw && ++anim == numAnims) animation = 0;
   if(!cw && --anim < 0)         animation = numAnims-1;
-  resetAnim();
 }
 
 void adjSpeed(bool cw) {
@@ -176,6 +188,10 @@ void initInput(void) {
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
 void inputLoop(void) {
-  if(mode == modeAnim) doAnim();
+  u16 now = millis();
+  if(countingClicks && ((now - lastClickTime) > CLICK_DELAY) {
+    countingClicks = false;
+  }
+  if(mode == modeAnim || settinState != stateNotSetting) doAnim();
 }
 

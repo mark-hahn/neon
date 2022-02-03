@@ -22,6 +22,8 @@ u8 flashCount = 0;
 void doAnim(){
   if(flashing) {
 
+    // set brightness to zero or BRIGHTNESS_MAX  -- TODO
+
   }
   else if(!animating) {
     initAnimVars();
@@ -34,9 +36,10 @@ void doAnim(){
   }
 }
 
-// exits animation mode
-void resetAnim(){
-  animating = false;
+void stopAnimation(){
+  brightness = BRIGHTNESS_MAX;
+  dimFactor  = 0;
+  animating  = false;
 }
 
 void flash(u8 count) {
