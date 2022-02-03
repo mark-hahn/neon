@@ -6,12 +6,6 @@
 #include "input.h"
 #include "led.h"
 
-// brightness (0..7)  is 2^^(brightness-1) ma,  1/2..64 ma
-#define BRIGHTNESS_MAX 7 
-
-// speed (0..10) is 2^^(speed-4) secs,  1/16..64 secs per action
-#define SPEED_MAX      10 
-
 #define EEPROM_CHK_BYTE 0x5a
 
 // operation modes
@@ -36,23 +30,19 @@ enum {
 
 void eepromInit() {
   if(getEepromByte(eeprom_chk_adr) != 0x5a) {
-    setEepromByte(eeprom_brightness_adr,  brightness);
+    setEepromByte(eeprom_brightness_adr,  (brightness - MIN_BRIGHTNESS));
     setEepromByte(eeprom_mode_adr,        mode);
     setEepromByte(eeprom_anim_adr,        animation);
     setEepromByte(eeprom_speed_adr,       animSpeed);
     setEepromByte(eeprom_chk_adr,         0x5a);
   }
   else {
-    brightness = getEepromByte(eeprom_brightness_adr);
-    mode       = getEepromByte(eeprom_mode_adr);
-    animation  = getEepromByte(eeprom_anim_adr);
-    animSpeed  = getEepromByte(eeprom_speed_adr);
+    brightness = (getEepromByte(eeprom_brightness_adr) + MIN_BRIGHTNESS);
+    mode       =  getEepromByte(eeprom_mode_adr);
+    animation  =  getEepromByte(eeprom_anim_adr);
+    animSpeed  =  getEepromByte(eeprom_speed_adr);
   }
 }
-
-
-// TODO -- set eeprom values when changed
-
 
 // set pwron gpio pin to zero
 // this turns off 3.3v power to mcu
@@ -74,50 +64,75 @@ void clickTimeout() {
   }
   if(clickCount >= 3) {
     mode = modeSettingAnim;   
+    setEepromByte(eeprom_mode_adr,        mode);
     return;
   }
   switch(mode) {
     case modeNormal:     
       // clickCount == 2
-      mode = modeNightLight; 
+      mode = modeNightLight;
+      setEepromByte(eeprom_mode_adr, mode);
       flash(2); 
       break;
 
     case modeNightLight: 
       // clickCount == 2
-      mode = modeAnim;       
+      mode = modeAnim;
+      setEepromByte(eeprom_mode_adr, mode);
       flash(3);
       break;
 
     case modeAnim: 
       // clickCount == 2
-      // inputLoop might run doAnim so ints off
-      ints_off;
       stopAnimation(); 
       mode = modeNormal;   
-      ints_on;
+      setEepromByte(eeprom_mode_adr, mode);
       flash(1); 
       break;
 
-    case modeSettingAnim:  mode = modeSettingSpeed; break;
-    case modeSettingSpeed: mode = modeAnim;         break;
+    case modeSettingAnim:  
+      mode = modeSettingSpeed; 
+      setEepromByte(eeprom_mode_adr, mode);
+      break;
+    case modeSettingSpeed: 
+      mode = modeAnim;
+      setEepromByte(eeprom_mode_adr, mode);
+      break;
   }
   clickCount = 0;
 }
 
 void adjBrightness(bool cw) {
-  if( cw && brightness < BRIGHTNESS_MAX) brightness++;
-  if(!cw && brightness > 0)              brightness--;
+  if( cw && brightness < MAX_BRIGHTNESS) {
+    brightness++;
+    setEepromByte(eeprom_brightness_adr,  (brightness - MIN_BRIGHTNESS));
+  }
+  if(!cw && brightness > MIN_BRIGHTNESS) {
+    brightness--;
+    setEepromByte(eeprom_brightness_adr,  (brightness - MIN_BRIGHTNESS));
+  }
 }
 
 void chgAnim(bool cw) {
-  if( cw && ++anim == numAnims) animation = 0;
-  if(!cw && --anim < 0)         animation = numAnims-1;
+  if( cw && ++anim == numAnims) {
+    animation = 0;
+    setEepromByte(eeprom_anim_adr, animation);
+  }
+  if(!cw && --anim < 0) {
+    animation = numAnims-1;
+    setEepromByte(eeprom_anim_adr, animation);
+  }
 }
 
 void adjSpeed(bool cw) {
-  if( cw && animSpeed < SPEED_MAX) animSpeed++;
-  if(!cw && animSpeed > 0)         animSpeed--;
+  if( cw && animSpeed < MAX_SPEED) {
+    animSpeed++;
+    setEepromByte(eeprom_speed_adr, animSpeed);
+  }
+  if(!cw && animSpeed > 0) {
+    animSpeed--;
+    setEepromByte(eeprom_speed_adr, animSpeed);
+  }
 }
 
 u16 lastClickTime = 0;
@@ -137,28 +152,26 @@ void encoderTurn(bool cw) {
 
 #define DEBOUNCE_DELAY_MS 10
 
-// irq6 interrupts every button or encoder pin change (port D)
+u16 lastBtnActivity = 0;
+
+// irq6 interrupts every button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
   static bool btnWaitDebounce  = false;
-  static u16  lastBtnActivity = 0;
-  static bool lastBtnWasDown  = false;
+  // no change when button is pressed to turn on power
   u16 now = millis();
   // check button if no activity for 10ms
   if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS)
     btnWaitDebounce = false;
 
   if(!btnWaitDebounce) {
-    btnDown = button_lvl; 
-    if(btnDown != lastBtnWasDown) {
-      if(btnDown) buttonPress();
-      lastBtnWasDown  = btnDown;
-      lastBtnActivity = now;
-      btnWaitDebounce = true;
-    }
+    // level should always be high since only interrupts on rising edge
+    buttonPress();
+    lastBtnActivity = now;
+    btnWaitDebounce = true;
   }
 }
 
-// irq5 interrupts every encoder pin change (port C)
+// irq5 interrupts either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
   static bool encaWaitDebounce = false;
   static u16  lastEncaActivity = 0;
@@ -189,13 +202,13 @@ void initInput(void) {
   // set encoder (IRQ5) interrupt priority to 2 (middle)
   ITC->ISPR2 = (ITC->ISPR2 & ~0x0c) | 0x00; // I1I0 is 0b00
 
-  // button and encoder external interrupts
+  // button and encoders are external interrupts
   button_in_int;
   enca_in_int;
   encb_in_int;
 
-  // pins interrupt on both edges
-  EXTI_CR1 = 0xff;
+  // all ports interrupt on rising edge only
+  EXTI_CR1 = 0b01010101;
 
   flash(1);  // indicate mode is normal
 }
@@ -208,13 +221,18 @@ void initInput(void) {
 void inputLoop(void) {
   u16 now = millis();
 
+  // click delay timeout starts on button release
+  if(button_lvl) lastBtnActivity = now;
+
   if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY) 
     clickTimeout();
 
   // check for timeout while setting anim or speed
   if((mode == modeSettingAnim || mode == modeSettingSpeed) 
-      && ((now - lastClickTime) > SETTING_DELAY))
+      && ((now - lastClickTime) > SETTING_DELAY)) {
     mode = modeAnim;
+    setEepromByte(eeprom_mode_adr, mode);
+  }
 
   if(mode == modeAnim || 
      mode == modeSettingAnim ||

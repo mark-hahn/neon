@@ -11,6 +11,10 @@
 #include "animation.h"
 
 void main(void) {
+  // turn on power pin quickly to keep power on
+  pwron_set;
+  pwron_out;
+
 //  while(true);  // disable mcu
 	
   // switch high-speed internal oscillator (HSI) to full-speed

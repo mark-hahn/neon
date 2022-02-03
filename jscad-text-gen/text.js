@@ -9,7 +9,7 @@ const {translate, translateZ} = jscad.transforms;
 const debug = false;
 
 // ------ default params --------- 
-let strParam    = "Clive";
+let strParam    = "Bowie";
 let fontsizeAdj = 1.1;
 let vertOfs     = -7;
 let genHulls    = true;
@@ -473,18 +473,24 @@ const main = (params) => {
   const boltUL = translate(
       [-plateW/2 + boltOfs,  plateH/2 - boltOfs, plateDepth/2],
       fhBolt_M3(plateDepth + 1));
+  const boltUM = translate(
+      [                  0,  plateH/2 - boltOfs, plateDepth/2],
+      fhBolt_M3(plateDepth + 1));
   const boltUR = translate(
       [ plateW/2 - boltOfs,  plateH/2 - boltOfs, plateDepth/2],
       fhBolt_M3(plateDepth + 1));
   const boltBL = translate(
       [-plateW/2 + boltOfs, -plateH/2 + boltOfs, plateDepth/2],
       fhBolt_M3(plateDepth + 1));
+  const boltBM = translate(
+      [                  0, -plateH/2 + boltOfs, plateDepth/2],
+      fhBolt_M3(plateDepth + 1));
   const boltBR = translate(
       [ plateW/2 - boltOfs, -plateH/2 + boltOfs, plateDepth/2],
       fhBolt_M3(plateDepth + 1));
 
   const plateOut = subtract(roundedPlate, hullsOfs, 
-                            boltUL, boltUR, boltBL,boltBR);
+                            boltUL, boltUM, boltUR, boltBL, boltBM, boltBR);
 
   return plateOut;
 };
