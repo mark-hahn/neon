@@ -18,15 +18,12 @@
 enum {
   modeNormal,
   modeNightLight,
-  modeAnim
+  modeAnim,
+  modeSettingAnim,
+  modeSettingSpeed
 }
 
-// setting state of control
-enum {
-  stateNotSetting,   // not changing mode/speed, knob sets brightness
-  stateSettingAnim,  // setting mode  with knob
-  stateSettingSpeed  // setting speed with knob
-}
+u8 mode = modeNormal;
 
 // eeprom addresses
 enum {
@@ -36,9 +33,6 @@ enum {
   eeprom_anim_adr,
   eeprom_speed_adr
 };
-
-u8 settingState = stateNotSetting;
-u8 mode         = modeNormal;
 
 void eepromInit() {
   if(getEepromByte(eeprom_chk_adr) != 0x5a) {
@@ -56,6 +50,10 @@ void eepromInit() {
   }
 }
 
+
+// TODO -- set eeprom values when changed
+
+
 // set pwron gpio pin to zero
 // this turns off 3.3v power to mcu
 // this never returns;
@@ -68,39 +66,43 @@ void powerDown() {
 u8 clickCount = 0;
 
 void clickTimeout() {
-  switch(settingState) {
-    case stateNotSetting: {
-      if(clickCount == 1) powerDown();  return;
-      if(clickCount == 2) {
-        switch(mode) {
-          case modeNormal:     mode = modeNightLight; flash(2); break;
-          case modeNightLight: mode = modeAnim;       flash(3); break;
-          case modeAnim: 
-            // inputLoop might run doAnim
-            ints_off;
-            stopAnimation(); 
-            mode = modeNormal;   
-            ints_on;
-            flash(1); 
-            break;
-        }
-      }
-      if(clickCount == 3) {
-        settingState == stateSettingAnim;
-      }
-    }
-    break;
-    case stateSettingAnim:  settingState = stateSettingSpeed; break;
-    case stateSettingSpeed: settingState = stateNotSetting;   break;
+  if(clickCount == 1 && 
+       mode != modeSettingAnim && 
+       mode != modeSettingSpeed) {
+    powerDown();  
+    return;
+  }
+  if(clickCount >= 3) {
+    mode = modeSettingAnim;   
+    return;
+  }
+  switch(mode) {
+    case modeNormal:     
+      // clickCount == 2
+      mode = modeNightLight; 
+      flash(2); 
+      break;
+
+    case modeNightLight: 
+      // clickCount == 2
+      mode = modeAnim;       
+      flash(3);
+      break;
+
+    case modeAnim: 
+      // clickCount == 2
+      // inputLoop might run doAnim so ints off
+      ints_off;
+      stopAnimation(); 
+      mode = modeNormal;   
+      ints_on;
+      flash(1); 
+      break;
+
+    case modeSettingAnim:  mode = modeSettingSpeed; break;
+    case modeSettingSpeed: mode = modeAnim;         break;
   }
   clickCount = 0;
-}
-
-u16 lastClickTime = 0;
-
-void buttonPress() {
-  clickCount++;
-  lastClickTime = millis();
 }
 
 void adjBrightness(bool cw) {
@@ -118,11 +120,19 @@ void adjSpeed(bool cw) {
   if(!cw && animSpeed > 0)         animSpeed--;
 }
 
+u16 lastClickTime = 0;
+
+void buttonPress() {
+  u16 now = millis();
+  clickCount++;
+  lastClickTime = now;
+}
+
 void encoderTurn(bool cw) {
-  switch(settingState) {
-    case stateNotSetting:   adjBrightness(cw); break;
-    case stateSettingAnim:  chgAnim(cw);       break;
-    case stateSettingSpeed: adjSpeed(cw);      break;
+  switch(mode) {
+    case modeSettingAnim:  chgAnim(cw);       break;
+    case modeSettingSpeed: adjSpeed(cw);      break;
+    default:               adjBrightness(cw); break;
   }
 }
 
@@ -186,13 +196,25 @@ void initInput(void) {
   flash(1);  // indicate mode is normal
 }
 
-#define CLICK_DELAY 300  // timeout for counting clicks
+#define CLICK_DELAY     300  // 300 ms  timeout for counting clicks
+#define SETTING_DELAY 30000  //  30 sec timeout while setting
 
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
 void inputLoop(void) {
   u16 now = millis();
-  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY) clickTimeout();
-  if(mode == modeAnim || settinState != stateNotSetting) doAnim();
+
+  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY) 
+    clickTimeout();
+
+  // check for timeout while setting anim or speed
+  if((mode == modeSettingAnim || mode == modeSettingSpeed) 
+      && ((now - lastClickTime) > SETTING_DELAY))
+    mode = modeAnim;
+
+  if(mode == modeAnim || 
+     mode == modeSettingAnim ||
+     mode == modeSettingSpeed) 
+    doAnim();
 }
 
