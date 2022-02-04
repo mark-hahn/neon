@@ -177,7 +177,7 @@ u16 lastBtnActivity = 0;
   static u16  lastEncaActivity = 0;
   static bool lastEncaWasDown  = false;
 
-  u16 now = millis();
+  u16 now = millis(void);
   if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS)
     encaWaitDebounce = false;
 

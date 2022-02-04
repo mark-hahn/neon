@@ -6,7 +6,3 @@ Keyword=ST7Workspace-V0.7
 [Project0]
 Filename=neon.stp
 Dependencies=
-[Options]
-ActiveProject=neon
-ActiveConfig=Debug
-AddSortedElements=1

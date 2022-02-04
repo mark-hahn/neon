@@ -12,10 +12,12 @@
 #define MAX_SPEED      10 
 
 // interrupts every button or encoder pin change (ports C and D)
-@far @interrupt void buttonIntHandler();   // irq6
+@far @interrupt void buttonIntHandler(void);   // irq6
 
 // interrupts every button or encoder pin change (ports C and D)
-@far @interrupt void encoderIntHandler();  // irq5
+@far @interrupt void encoderIntHandler(void);  // irq5
+
+void powerDown(void);
 
 void initInput(void);
 

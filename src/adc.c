@@ -2,6 +2,8 @@
 #include "stm8s.h"
 #include "main.h"
 #include "gpio.h"
+#include "input.h"
+#include "led.h"
 #include "adc.h"
 
 #define CH_MASK   0x0f  // in ADC1->CSR
@@ -20,10 +22,10 @@ void startAdc(u8 chan) {
 }
 
 // wait for conversion to finish and return value
-u16 waitForAdc() {
+u16 waitForAdc(void) {
   while ((ADC1->CSR & ADC1_CSR_EOC) == 0);
   ADC1->CSR &= ~ADC1_CSR_EOC; // turn off end-of-conversion flag
-  return (ADC1->DRH << 8) | ADC1->DRL;
+  return get16(ADC1->DR);
 }
 
 lightSens = 0x0200;  // set in handleAdcInt
@@ -31,7 +33,7 @@ lightSens = 0x0200;  // set in handleAdcInt
 // ambient light (photo-resistor)
 // meaningless units
 // called from input.c
-u16 getAmbientLight() {
+u16 getAmbientLight(void) {
   return lightSens;
 }
 
@@ -46,7 +48,7 @@ void initAdc(void) {
     // ADC1_CSR_AWD   |  // 0x40 Analog Watch Dog Status mask
     // ADC1_CSR_EOCIE |  // 0x20 Interrupt Enable for EOC mask
     // ADC1_CSR_AWDIE |  // 0x10 Analog Watchdog interrupt enable mask
-    | // ADC1_CSR_CH 0x0F Channel selection bits mask (AINx) -- set to select
+    // ADC1_CSR_CH 0x0F Channel selection bits mask (AINx) -- set to select
     0;
 
   ADC1->CR1 =
@@ -70,6 +72,11 @@ void initAdc(void) {
   startAdc(BSENS_CH); 
 }
 
+// this protects the battery from under voltage
+// note that the adc reading goes up as voltage goes down
+// TODO -- measure this
+#define BAT_UNDER_VOLTAGE_THRES 1023 
+
 // called from timer int in led.c
 // returns led current, no meaningful units
 // sort of like a main loop
@@ -77,13 +84,15 @@ u16 handleAdcInt(void) {
   static u16 batteryAdc = 0x0200;
   u16 current;
 
+  if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
+
   // wait for previous BSENS_CH or LGTSENS_CH conversion
   if(curAdcChan == BSENS_CH) batteryAdc = waitForAdc(); 
   else                       lightSens  = waitForAdc(); 
 
   // current is cursens adc adjusted for battery voltage
   startAdc(CURSENS_CH);
-  current = waitForAdc() * ((u16 0xffff / batteryAdc) / BAT_FACTOR);
+  current = waitForAdc() * ((u16) 0xffff / batteryAdc) / BAT_FACTOR;
 
   // start next conversion to run between interrupts;
   if(curAdcChan == BSENS_CH) startAdc(LGTSENS_CH); 

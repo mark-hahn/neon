@@ -73,7 +73,7 @@ Int.108=0
 String.6.0=2022,1,31,11,9,59
 String.100.0=$(TargetFName)
 String.101.0=
-String.103.0=.\;src;
+String.103.0=.\;src;inc;
 
 [Root.Config.0.Settings.2]
 String.2.0=
@@ -82,7 +82,7 @@ String.100.0=STM8S103F3P
 
 [Root.Config.0.Settings.3]
 String.2.0=Compiling $(InputFile)...
-String.3.0=cxstm8 -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.3.0=cxstm8 -iinc  -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
 String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
 String.5.0=$(IntermPath)$(InputName).ls
 String.6.0=2022,1,31,11,9,59
@@ -153,7 +153,7 @@ Int.108=0
 String.6.0=2022,1,31,11,9,59
 String.100.0=$(TargetFName)
 String.101.0=
-String.103.0=.\;src;
+String.103.0=.\;src;inc;
 
 [Root.Config.1.Settings.2]
 String.2.0=
@@ -162,7 +162,7 @@ String.100.0=STM8S103F3P
 
 [Root.Config.1.Settings.3]
 String.2.0=Compiling $(InputFile)...
-String.3.0=cxstm8 +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.3.0=cxstm8 -iinc  +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
 String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
 String.5.0=$(IntermPath)$(InputName).ls
 String.6.0=2022,1,31,11,9,59
@@ -215,7 +215,7 @@ String.6.0=2022,1,31,11,9,59
 [Root.Source Files]
 ElemType=Folder
 PathName=Source Files
-Child=Root.Source Files.src\main.c
+Child=Root.Source Files.src\adc.c
 Next=Root.Include Files
 Config.0=Root.Source Files.Config.0
 Config.1=Root.Source Files.Config.1
@@ -240,7 +240,7 @@ Int.1=0
 
 [Root.Source Files.Config.0.Settings.1]
 String.2.0=Compiling $(InputFile)...
-String.3.0=cxstm8 -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.3.0=cxstm8 -iinc  -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
 String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
 String.5.0=$(IntermPath)$(InputName).ls
 String.6.0=2022,1,31,11,9,59
@@ -267,7 +267,7 @@ Int.1=0
 
 [Root.Source Files.Config.1.Settings.1]
 String.2.0=Compiling $(InputFile)...
-String.3.0=cxstm8 +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.3.0=cxstm8 -iinc  +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
 String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
 String.5.0=$(IntermPath)$(InputName).ls
 String.6.0=2022,1,31,11,9,59
@@ -286,18 +286,20 @@ String.4.0=
 String.5.0=
 String.6.0=2022,1,31,11,9,59
 
+[Root.Source Files.src\adc.c]
+ElemType=File
+PathName=src\adc.c
+Next=Root.Source Files.src\main.c
+
 [Root.Source Files.src\main.c]
 ElemType=File
 PathName=src\main.c
-Next=Root.Source Files.stm8_interrupt_vector.c
-
-[Root.Source Files.stm8_interrupt_vector.c]
-ElemType=File
-PathName=stm8_interrupt_vector.c
 
 [Root.Include Files]
 ElemType=Folder
 PathName=Include Files
+Child=Root.Include Files.inc\adc.h
+Next=Root.stm8_interrupt_vector.c
 Config.0=Root.Include Files.Config.0
 Config.1=Root.Include Files.Config.1
 
@@ -321,7 +323,7 @@ Int.1=0
 
 [Root.Include Files.Config.0.Settings.1]
 String.2.0=Compiling $(InputFile)...
-String.3.0=cxstm8 -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.3.0=cxstm8 -iinc  -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
 String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
 String.5.0=$(IntermPath)$(InputName).ls
 String.6.0=2022,1,31,11,9,59
@@ -348,7 +350,7 @@ Int.1=0
 
 [Root.Include Files.Config.1.Settings.1]
 String.2.0=Compiling $(InputFile)...
-String.3.0=cxstm8 +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.3.0=cxstm8 -iinc  +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
 String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
 String.5.0=$(IntermPath)$(InputName).ls
 String.6.0=2022,1,31,11,9,59
@@ -366,3 +368,100 @@ String.3.0=
 String.4.0=
 String.5.0=
 String.6.0=2022,1,31,11,9,59
+
+[Root.Include Files.inc\adc.h]
+ElemType=File
+PathName=inc\adc.h
+Next=Root.Include Files.inc\animation.h
+
+[Root.Include Files.inc\animation.h]
+ElemType=File
+PathName=inc\animation.h
+Next=Root.Include Files.inc\eeprom.h
+
+[Root.Include Files.inc\eeprom.h]
+ElemType=File
+PathName=inc\eeprom.h
+Next=Root.Include Files.inc\gpio.h
+
+[Root.Include Files.inc\gpio.h]
+ElemType=File
+PathName=inc\gpio.h
+Next=Root.Include Files.inc\input.h
+
+[Root.Include Files.inc\input.h]
+ElemType=File
+PathName=inc\input.h
+Next=Root.Include Files.inc\led.h
+
+[Root.Include Files.inc\led.h]
+ElemType=File
+PathName=inc\led.h
+Next=Root.Include Files.inc\main.h
+
+[Root.Include Files.inc\main.h]
+ElemType=File
+PathName=inc\main.h
+Next=Root.Include Files.inc\stm8s.h
+
+[Root.Include Files.inc\stm8s.h]
+ElemType=File
+PathName=inc\stm8s.h
+
+[Root.stm8_interrupt_vector.c]
+ElemType=File
+PathName=stm8_interrupt_vector.c
+Config.0=Root.stm8_interrupt_vector.c.Config.0
+Config.1=Root.stm8_interrupt_vector.c.Config.1
+
+[Root.stm8_interrupt_vector.c.Config.0]
+Settings.0.0=Root.stm8_interrupt_vector.c.Config.0.Settings.0
+Settings.0.1=Root.stm8_interrupt_vector.c.Config.0.Settings.1
+Settings.0.2=Root.stm8_interrupt_vector.c.Config.0.Settings.2
+
+[Root.stm8_interrupt_vector.c.Config.1]
+Settings.1.0=Root.stm8_interrupt_vector.c.Config.1.Settings.0
+Settings.1.1=Root.stm8_interrupt_vector.c.Config.1.Settings.1
+Settings.1.2=Root.stm8_interrupt_vector.c.Config.1.Settings.2
+
+[Root.stm8_interrupt_vector.c.Config.0.Settings.0]
+String.6.0=2022,2,3,14,26,22
+String.8.0=Debug
+Int.0=0
+Int.1=0
+
+[Root.stm8_interrupt_vector.c.Config.0.Settings.1]
+String.2.0=Performing Custom Build on $(InputFile)
+String.3.0=
+String.4.0=
+String.5.0=
+String.6.0=2022,1,31,11,9,59
+
+[Root.stm8_interrupt_vector.c.Config.0.Settings.2]
+String.2.0=Compiling $(InputFile)...
+String.3.0=cxstm8 -iinc  -customDbg -customDebCompat -customOpt-no -customLst -l +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
+String.5.0=$(IntermPath)$(InputName).ls
+String.6.0=2022,1,31,11,9,59
+String.8.0=Debug
+
+[Root.stm8_interrupt_vector.c.Config.1.Settings.0]
+String.6.0=2022,2,3,14,26,22
+String.8.0=Release
+Int.0=0
+Int.1=0
+
+[Root.stm8_interrupt_vector.c.Config.1.Settings.1]
+String.2.0=Performing Custom Build on $(InputFile)
+String.3.0=
+String.4.0=
+String.5.0=
+String.6.0=2022,1,31,11,9,59
+
+[Root.stm8_interrupt_vector.c.Config.1.Settings.2]
+String.2.0=Compiling $(InputFile)...
+String.3.0=cxstm8 -iinc  +mods0 -customC-pp $(ToolsetIncOpts) -cl$(IntermPath) -co$(IntermPath) $(InputFile) 
+String.4.0=$(IntermPath)$(InputName).$(ObjectExt)
+String.5.0=$(IntermPath)$(InputName).ls
+String.6.0=2022,1,31,11,9,59
+String.8.0=Release

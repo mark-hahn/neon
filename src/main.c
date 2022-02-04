@@ -1,6 +1,4 @@
-// this code assumes STM8S003F3 or STM8S103F3 
-// set these option bits ...
-//   AFR0 for timers
+// STM8S003F3 or STM8S103F3 
 
 #include "stm8s.h"
 #include "main.h"

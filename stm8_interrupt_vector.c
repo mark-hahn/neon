@@ -1,6 +1,6 @@
 
-#include "clock.h"
-#include "i2c.h"
+#include "input.h"
+#include "led.h"
 
 typedef void @far (*interrupt_handler_t)(void);
 

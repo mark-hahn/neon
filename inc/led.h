@@ -13,7 +13,6 @@
 #define NOT_DIMMING_FACTOR 1024
 
 extern i8  brightness;
-extern u16 dimFactor;
 
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);
