@@ -48,7 +48,6 @@ void eepromInit(void) {
 // this turns off 3.3v power to mcu
 // this never returns;
 void powerDown() {
-  ints_off;
   pwron_clr;
   while(true);
 }
