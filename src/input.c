@@ -15,7 +15,7 @@ enum {
   modeAnim,
   modeSettingAnim,
   modeSettingSpeed
-}
+};
 
 u8 mode = modeNormal;
 
@@ -28,7 +28,7 @@ enum {
   eeprom_speed_adr
 };
 
-void eepromInit() {
+void eepromInit(void) {
   if(getEepromByte(eeprom_chk_adr) != 0x5a) {
     setEepromByte(eeprom_brightness_adr,  (brightness - MIN_BRIGHTNESS));
     setEepromByte(eeprom_mode_adr,        mode);
@@ -55,7 +55,7 @@ void powerDown() {
 
 u8 clickCount = 0;
 
-void clickTimeout() {
+void clickTimeout(void) {
   if(clickCount == 1 && 
        mode != modeSettingAnim && 
        mode != modeSettingSpeed) {
@@ -114,11 +114,11 @@ void adjBrightness(bool cw) {
 }
 
 void chgAnim(bool cw) {
-  if( cw && ++anim == numAnims) {
+  if( cw && ++animation == numAnims) {
     animation = 0;
     setEepromByte(eeprom_anim_adr, animation);
   }
-  if(!cw && --anim < 0) {
+  if(!cw && --animation < 0) {
     animation = numAnims-1;
     setEepromByte(eeprom_anim_adr, animation);
   }
@@ -137,7 +137,7 @@ void adjSpeed(bool cw) {
 
 u16 lastClickTime = 0;
 
-void buttonPress() {
+void buttonPress(void) {
   lastClickTime = millis();
   clickCount++;
 }
@@ -157,10 +157,9 @@ u16 lastBtnActivity = 0;
 // irq6 interrupts every button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
   static bool btnWaitDebounce  = false;
-  // no change when button is pressed to turn on power
   u16 now = millis();
   // check button if no activity for 10ms
-  if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS)
+  if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS))
     btnWaitDebounce = false;
 
   if(!btnWaitDebounce) {
@@ -175,21 +174,16 @@ u16 lastBtnActivity = 0;
 @far @interrupt void encoderIntHandler() {
   static bool encaWaitDebounce = false;
   static u16  lastEncaActivity = 0;
-  static bool lastEncaWasDown  = false;
 
-  u16 now = millis(void);
-  if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS)
+  u16 now = millis();
+  if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS))
     encaWaitDebounce = false;
 
   if(!encaWaitDebounce) {
-    encaDown = enca_lvl; 
-    if(encaDown != lastEncaWasDown) {
-      if(encb_lvl) encoderTurn(true);
-      else         encoderTurn(false);
-      lastEncaWasDown  = encaDown;
-      lastEncaActivity = now;
-      encaWaitDebounce = true;
-    }
+    if(encb_lvl) encoderTurn(true);
+    else         encoderTurn(false);
+    lastEncaActivity = now;
+    encaWaitDebounce = true;
   }
 }
 
@@ -208,7 +202,7 @@ void initInput(void) {
   encb_in_int;
 
   // all ports interrupt on rising edge only
-  EXTI_CR1 = 0b01010101;
+  EXTI->CR1 = 0x55;
 
   flash(1);  // indicate mode is normal
 }
@@ -224,7 +218,7 @@ void inputLoop(void) {
   // click delay timeout starts on button release
   if(button_lvl) lastBtnActivity = now;
 
-  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY) 
+  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
     clickTimeout();
 
   // check for timeout while setting anim or speed

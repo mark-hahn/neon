@@ -5,7 +5,13 @@
 #include "stm8s.h"
 #include "main.h"
 
-extern u16  dimFactor;
+enum {
+  blinkAnim,     // obnoxious blinking animation, instant rise/fall
+  blinkSoftAnim, // blinking animation with rise/fall action speed
+  // ... more animation modes
+  numAnims       // count of anims above
+};
+
 extern i8   animation;
 extern i8   animSpeed;
 extern bool flashing;

@@ -6,18 +6,9 @@
 #include "led.h"
 #include "animation.h"
 
-
-// enum {
-//   blinkAnim,     // obnoxious blinking animation, instant rise/fall
-//   blinkSoftAnim, // blinking animation with rise/fall action speed
-//   // ... more animation modes
-//   numAnims       // count of anims above
-// }
-
 // globals
 i8   animation = 1;
 i8   animSpeed = MAX_SPEED/2;
-u16  dimFactor = 0;
 bool flashing  = false;  // overides everything
 
 bool animating = false;
@@ -30,7 +21,7 @@ void initAnimVars(void) {
 u8 flashCount = 0;
 
 // starts or continues animation by 64 usecs
-void doAnim(){
+void doAnim(void){
   if(flashing) {
 
     // set brightness to MIN_BRIGHTNESS or MAX_BRIGHTNESS  -- TODO
@@ -47,7 +38,7 @@ void doAnim(){
   }
 }
 
-void stopAnimation(){
+void stopAnimation(void){
   brightness = MAX_BRIGHTNESS;
   dimFactor  = 0;
   animating  = false;
@@ -61,10 +52,10 @@ void flash(u8 count) {
 }
 
 // called at power-up
-void initAnimation() {
+void initAnimation(void) {
 
 }
 
-void animationLoop() {
+void animationLoop(void) {
   if(flashing) doAnim();
 }

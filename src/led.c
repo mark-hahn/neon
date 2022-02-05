@@ -3,6 +3,7 @@
 #include "gpio.h"
 #include "adc.h"
 #include "input.h"
+#include "animation.h"
 #include "led.h"
 
 #define TIM2_PRESCALE    0  // clocks at full 16 MHz
@@ -31,8 +32,7 @@ u16 dimFactor     = NOT_DIMMING_FACTOR;
 
 // sets desired led current based on brightness and dimming
 void setLedCurrentTgt() {
-  u32 numerator;
-
+  u32 highDimFact;
   if(brightness == 0 || dimFactor == 0) {
     ledCurrentTgt = 0;
     return;
@@ -41,7 +41,7 @@ void setLedCurrentTgt() {
     ledCurrentTgt = MAX_CURRENT;
     return;
   }
-  u32 highDimFact = ((u32) 0x10000) * (u32) (NOT_DIMMING_FACTOR - dimFactor);
+  highDimFact = ((u32) 0x10000) * (u32) (NOT_DIMMING_FACTOR - dimFactor);
 
   // brightness (0..7)  is 2^^(brightness-1) ma,  1/2, 1, .. 64 ma
   if((brightness-1) >= 0)
@@ -54,10 +54,10 @@ void setLedCurrentTgt() {
 
 // calls handleAdcInt to get led current
 // and uses it to adjust pwm to ledCurrentTgt
-void adjustPwm() {
+void adjustPwm(void) {
    static u16 pwmVal = 0;
    u16 current;
-   if(ledCurrentTgt == 0) {{
+   if(ledCurrentTgt == 0) {
      set16(LED_PWM_, 0);
      return;
    }
@@ -158,10 +158,10 @@ void initLed(void) {
   TIM2->CCR2H = 0; 
 
 // set pin low initially
-  led_clr;
+  pwm_clr;
 
 // set pin as push-pull output
-  led_out;
+  pwm_out;
 
   set16(LED_PWM_, 0);  // start with pwm of zero
   
