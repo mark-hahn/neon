@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "r": "shellscript",
+    "input.h": "c",
+    "stm8s.h": "c"
+  }
+}

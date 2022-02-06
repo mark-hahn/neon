@@ -153,7 +153,7 @@ void encoderTurn(bool cw) {
 
 u16 lastBtnActivity = 0;
 
-// irq6 interrupts every button pin rising edge (port D)
+// irq6 interrupt button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
   static bool btnWaitDebounce  = false;
   u16 now = millis();
