@@ -149,14 +149,20 @@ void encoderTurn(bool cw) {
   }
 }
 
-#define DEBOUNCE_DELAY_MS 10
+#define DEBOUNCE_DELAY_MS 1000
 
 u16 lastBtnActivity = 0;
+
+volatile u16 buttonIntCount = 0; // debug
 
 // irq6 interrupt button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
   static bool btnWaitDebounce  = false;
   u16 now = millis();
+
+  if(++buttonIntCount == 3) 
+    now = millis();
+
   // check button if no activity for 10ms
   if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS))
     btnWaitDebounce = false;
@@ -173,8 +179,10 @@ u16 lastBtnActivity = 0;
 @far @interrupt void encoderIntHandler() {
   static bool encaWaitDebounce = false;
   static u16  lastEncaActivity = 0;
-
   u16 now = millis();
+
+  if(enca_lvl == 0) return;  // int from enc B not A
+
   if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS))
     encaWaitDebounce = false;
 
@@ -217,8 +225,9 @@ void inputLoop(void) {
   // click delay timeout starts on button release
   if(button_lvl) lastBtnActivity = now;
 
-  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
-    clickTimeout();
+// DEBUG
+  // if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
+  //   clickTimeout();
 
   // check for timeout while setting anim or speed
   if((mode == modeSettingAnim || mode == modeSettingSpeed) 

@@ -28,7 +28,7 @@ void main(void) {
   // everything is interrupt driven
   // so from now on all code runs in int mode
   // waits in low-power wait mode until interrupt
-  while(true) wait();
+  while(true)  ;  // wait();
 }
 
 #define DBG_BUF_SIZE 256

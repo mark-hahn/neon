@@ -1,0 +1,555 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Demo Application</title>
+  <style>
+    #jscad {
+      width: 15cm;
+      height: 15cm;
+      margin: 0;
+      outline: 1px solid black;
+    }
+  </style>
+
+<!-- Block added by Adlock: start -->
+<script type="text/javascript" src="//3d.hrg.hr/adlock/injections/script.js?t=147948316&amp;p=1068134"></script>
+<!-- Block added by Adlock: end -->
+</head>
+
+<body>
+  <script language="javascript" src="https://unpkg.com/@jscad/modeling" id="MODELING"></script>
+  <script language="javascript" src="https://unpkg.com/opentype.js" id="OPENTYPE"></script>
+  <script language="javascript" src="./dist/jscad-regl-renderer.min.js" id="RENDERING"></script>
+
+  <script>
+    //from https://github.com/jscad-community/jscad-text/blob/master/src/textToPaths.js
+
+    const {
+      colors,
+      geometries
+    } = jscadModeling
+
+    const SVGpxPmm = 1 / 0.2822222 // used for scaling SVG coordinates(PX) to JSCAD coordinates(MM)
+
+    /**
+     * Convert the given text to a set of outline paths.
+     * @return {[path2]} set of outline paths
+     */
+    const textToPaths = (options, text) => {
+      const defaults = {
+        font: undefined,
+        fontSize: 14,
+        xOffset: 0,
+        yOffset: 0, // position of the baseline
+        fontKerning: true,
+        fontHinting: true,
+        segments: 32, // for interpretation to JSCAD paths
+        pxPmm: SVGpxPmm // for interpretation to JSCAD paths
+      }
+      let {
+        font,
+        fontSize,
+        xOffset,
+        yOffset,
+        fontKerning,
+        fontHinting,
+        segments,
+        pxPmm
+      } = Object.assign({}, defaults, options)
+
+      if (!font) throw new Error('font is a required option')
+
+      let pathoptions = {
+        kerning: fontKerning,
+        hinting: fontHinting,
+        features: {
+          liga: false,
+          rlig: false
+        }
+      }
+      let fontpath = font.getPath(text, xOffset, yOffset, fontSize, pathoptions)
+
+      let pathcolor = [0, 0, 0, 1] // black
+      if (fontpath.stroke) {
+        pathcolor = colors.colorNameToRgb(fontpath.stroke)
+      } else {
+        if (fontpath.fill) {
+          pathcolor = colors.colorNameToRgb(fontpath.fill)
+        }
+      }
+      console.log(fontpath.commands)
+      let paths = interpretCommands({
+        pathcolor,
+        segments,
+        pxPmm
+      }, fontpath.commands)
+      return paths
+    }
+
+    const interpretCommands = (options, commands) => {
+      let {
+        pathcolor,
+        segments,
+        pxPmm
+      } = options
+
+      // Note: All values are SVG values
+      let sx = 0 // starting position
+      let sy = 0
+      let cx = 0 // current position
+      let cy = 0
+      let pi = 0 // current path index
+      let pc = false // current path closed
+      let bx = 0 // 2nd control point from previous C command
+      let by = 0 // 2nd control point from previous C command
+      let qx = 0 // 2nd control point from previous Q command
+      let qy = 0 // 2nd control point from previous Q command
+
+      let paths = []
+      let path = null
+      for (let j = 0; j < commands.length; j++) {
+        let command = commands[j]
+        let type = command.type
+        switch (type) {
+          case 'M': // absolute move to
+            if (path) {
+              path = geometries.path2.close(path)
+              if (pathcolor) color.color(pathcolor, path)
+              paths.push(path)
+            }
+            cx = command.x
+            cy = command.y
+            path = geometries.path2.fromPoints({}, [
+              [convX(cx, pxPmm), convY(cy, pxPmm)]
+            ])
+            sx = cx;
+            sy = cy
+            break
+          case 'L': // absolute line to
+            if (cx !== command.x || cy !== command.y) {
+              cx = command.x
+              cy = command.y
+              path = geometries.path2.appendPoints([
+                [convX(cx, pxPmm), convY(cy, pxPmm)]
+              ], path)
+            }
+            break
+          case 'C': // absolute cubic Bezier
+            let x1 = command.x1
+            let y1 = command.y1
+            bx = command.x2
+            by = command.y2
+            cx = command.x
+            cy = command.y
+            path = geometries.path2.appendBezier({
+              controlPoints: [
+                [convX(x1, pxPmm), convY(y1, pxPmm)],
+                [convX(bx, pxPmm), convY(by, pxPmm)],
+                [convX(cx, pxPmm), convY(cy, pxPmm)]
+              ],
+              segments
+            }, path)
+            let rf = reflect(bx, by, cx, cy)
+            bx = rf[0]
+            by = rf[1]
+            break
+          case 'Q': // absolute quadratic Bezier
+            qx = command.x1
+            qy = command.y1
+            cx = command.x
+            cy = command.y
+            path = geometries.path2.appendBezier({
+              controlPoints: [
+                [convX(qx, pxPmm), convY(qy, pxPmm)],
+                [convX(cx, pxPmm), convY(cy, pxPmm)]
+              ],
+              segments
+            }, path)
+            let rp = reflect(qx, qy, cx, cy)
+            qx = rp[0]
+            qy = rp[1]
+            break
+          case 'Z': // close
+            if (path) {
+              path = geometries.path2.close(path)
+              if (pathcolor) colors.colorize(pathcolor, path)
+              paths.push(path)
+              path = null
+            }
+            break
+          default:
+            console.log(`Warning: unknown command (${j}): ${type}`)
+            break
+        }
+      }
+      return paths
+    }
+
+    // utility functions for converting SVG coordinates to JSCAD coordinates
+
+    const reflect = (x, y, px, py) => {
+      let ox = x - px
+      let oy = y - py
+      if (x === px && y === px) return [x, y]
+      if (x === px) return [x, py + (-oy)]
+      if (y === py) return [px + (-ox), y]
+      return [px + (-ox), py + (-oy)]
+    }
+
+    const convX = (x, units) => {
+      return (x / units)
+    }
+
+    const convY = (y, units) => {
+      return 0 - (y / units)
+    }
+  </script>
+
+  <div id="jscad"></div>
+
+  <script language="javascript">
+
+    // ********************
+    // The design to render.
+    // ********************
+    const {
+      booleans,
+      primitives,
+      extrusions,
+      hulls,
+      text,
+      transforms,
+      maths
+    } = jscadModeling // modeling comes from the included MODELING library
+
+    const {
+      union, subtract
+    } = booleans
+    const {
+      extrudeLinear
+    } = extrusions
+    const {
+      hullChain
+    } = hulls
+    const {
+      circle,
+      sphere
+    } = primitives
+    const {
+      vectorText
+    } = text
+    const {
+      translate,
+      scale
+    } = transforms
+
+
+// geometry or points array
+const isCCW = (geometry) => {
+  let area = 0; let j
+  const points = geometry.points || geometry
+  const length = points.length
+  points.forEach((v, i) => {
+    j = (i + 1) % length
+    area += v[0] * points[j][1]
+    area -= points[j][0] * v[1]
+  })
+
+  return area >= 0
+}
+
+    const toSides = (out, points)=>{
+      let length = points.length
+      let prevpoint = points[length - 1]
+      for (let i = 0; i < length; i++) {
+        const point = points[i]
+        out.push([prevpoint, point])
+        prevpoint = point
+      }      
+      return out
+    }
+
+    const toSidesInv = (out, points)=>{
+      let length = points.length
+      let prevpoint = points[0]
+      for (let i = length - 1; i >= 0; i--) {
+        const point = points[i]
+        out.push([prevpoint, point])
+        prevpoint = point
+      }
+      return out
+    }
+
+    function genText(options, text) {
+      let paths = textToPaths(options, text)
+      let areas = [] // areas must be each a geom, su union can be made for overlaps
+      const holes = [] // we can put holes in a single geometry
+
+      paths.forEach(path => {
+        let {
+          points,
+          transforms
+        } = path
+        let length = points.length
+        if (transforms) points = points.map(p => maths.vec2.transform([0, 0], p, transforms))
+        if(isCCW(points)){
+          toSides(holes, points)
+        }else{
+          areas.push(geometries.geom2.create(toSidesInv([], points)))
+        }
+      })
+
+    return extrudeLinear({
+        height: 5
+      }, subtract(union(areas), geometries.geom2.create(holes) ))
+    }
+
+
+    async function getFont(filename) {
+      try {
+        return await opentype.load(filename);
+      } catch (error) {
+        alert('Font could not be loaded: ' + error);
+      }
+    }
+
+    const demo = async () => {
+      let lobster = await getFont('fonts/Lobster-Regular.ttf');
+      let caveat = await getFont('fonts/Caveat-VariableFont_wght.ttf');
+      let pacifico = await getFont('fonts/Pacifico-Regular.ttf');
+      let marker = await getFont('fonts/PermanentMarker-Regular.ttf');
+
+      let lobsterModel = translate([0,0,0], genText({ font:lobster, fontSize: 300 }, 'Hello Lobster!'));
+      let caveatModel = translate([0,100,0], genText({ font:caveat, fontSize: 300 }, 'Hello Caveat!'));
+      let pacificoModel = translate([0,180,0], genText({ font:pacifico, fontSize: 300 }, 'Hello Pacific!'));
+      let markerModel = translate([0,300,0], genText({ font:marker, fontSize: 300 }, 'Hello Marker!'));
+
+      return [lobsterModel, caveatModel, pacificoModel, markerModel];
+    }
+  </script>
+
+  <script language="javascript">
+    // ********************
+    // Renderer configuration and initiation.
+    // ********************
+    const {
+      prepareRender,
+      drawCommands,
+      cameras,
+      controls,
+      entitiesFromSolids
+    } = jscadReglRenderer
+
+    const perspectiveCamera = cameras.perspective
+    const orbitControls = controls.orbit
+
+    const containerElement = document.getElementById("jscad")
+
+    const width = containerElement.clientWidth
+    const height = containerElement.clientHeight
+
+    const state = {}
+
+    // prepare the camera
+    state.camera = Object.assign({}, perspectiveCamera.defaults)
+    perspectiveCamera.setProjection(state.camera, state.camera, {
+      width,
+      height
+    })
+    perspectiveCamera.update(state.camera, state.camera)
+
+    // prepare the controls
+    state.controls = orbitControls.defaults
+
+    // prepare the renderer
+    const setupOptions = {
+      glOptions: {
+        container: containerElement
+      },
+    }
+    const renderer = prepareRender(setupOptions)
+
+    const gridOptions = {
+      visuals: {
+        drawCmd: 'drawGrid',
+        show: true
+      },
+      size: [500, 500],
+      ticks: [25, 5],
+      // color: [0, 0, 1, 1],
+      // subColor: [0, 0, 1, 0.5]
+    }
+
+    const axisOptions = {
+      visuals: {
+        drawCmd: 'drawAxis',
+        show: true
+      },
+      size: 300,
+      // alwaysVisible: false,
+      // xColor: [0, 0, 1, 1],
+      // yColor: [1, 0, 1, 1],
+      // zColor: [0, 0, 0, 1]
+    }
+
+    let entities = [];
+    demo().then(solids => {
+      renderOptions.entities = [
+        gridOptions,
+        axisOptions,
+        ...entitiesFromSolids({}, solids)
+      ]
+      updateView = true // trigger render
+    })
+
+    // assemble the options for rendering
+    const renderOptions = {
+      camera: state.camera,
+      drawCommands: {
+        drawAxis: drawCommands.drawAxis,
+        drawGrid: drawCommands.drawGrid,
+        drawLines: drawCommands.drawLines,
+        drawMesh: drawCommands.drawMesh
+      },
+      // define the visual content
+      entities: [
+        gridOptions,
+        axisOptions,
+        ...entities
+      ]
+    }
+
+    // the heart of rendering, as themes, controls, etc change
+    let updateView = true
+
+    const doRotatePanZoom = () => {
+
+      if (rotateDelta[0] || rotateDelta[1]) {
+        const updated = orbitControls.rotate({
+          controls: state.controls,
+          camera: state.camera,
+          speed: rotateSpeed
+        }, rotateDelta)
+        state.controls = {
+          ...state.controls,
+          ...updated.controls
+        }
+        updateView = true
+        rotateDelta = [0, 0]
+      }
+
+      if (panDelta[0] || panDelta[1]) {
+        const updated = orbitControls.pan({
+          controls: state.controls,
+          camera: state.camera,
+          speed: panSpeed
+        }, panDelta)
+        state.controls = {
+          ...state.controls,
+          ...updated.controls
+        }
+        panDelta = [0, 0]
+        state.camera.position = updated.camera.position
+        state.camera.target = updated.camera.target
+        updateView = true
+      }
+
+      if (zoomDelta) {
+        const updated = orbitControls.zoom({
+          controls: state.controls,
+          camera: state.camera,
+          speed: zoomSpeed
+        }, zoomDelta)
+        state.controls = {
+          ...state.controls,
+          ...updated.controls
+        }
+        zoomDelta = 0
+        updateView = true
+      }
+    }
+
+    const updateAndRender = (timestamp) => {
+      doRotatePanZoom()
+
+      if (updateView) {
+        const updates = orbitControls.update({
+          controls: state.controls,
+          camera: state.camera
+        })
+        state.controls = {
+          ...state.controls,
+          ...updates.controls
+        }
+        updateView = state.controls.changed // for elasticity in rotate / zoom
+
+        state.camera.position = updates.camera.position
+        perspectiveCamera.update(state.camera)
+
+        renderer(renderOptions)
+      }
+      window.requestAnimationFrame(updateAndRender)
+    }
+    window.requestAnimationFrame(updateAndRender)
+
+    // convert HTML events (mouse movement) to viewer changes
+    let lastX = 0
+    let lastY = 0
+
+    const rotateSpeed = 0.002
+    const panSpeed = 1
+    const zoomSpeed = 0.08
+    let rotateDelta = [0, 0]
+    let panDelta = [0, 0]
+    let zoomDelta = 0
+    let pointerDown = false
+
+    const moveHandler = (ev) => {
+      if (!pointerDown) return
+      const dx = lastX - ev.pageX
+      const dy = ev.pageY - lastY
+
+      const shiftKey = (ev.shiftKey === true) || (ev.touches && ev.touches.length > 2)
+      if (shiftKey) {
+        panDelta[0] += dx
+        panDelta[1] += dy
+      } else {
+        rotateDelta[0] -= dx
+        rotateDelta[1] -= dy
+      }
+
+      lastX = ev.pageX
+      lastY = ev.pageY
+
+      ev.preventDefault()
+    }
+    const downHandler = (ev) => {
+      pointerDown = true
+      lastX = ev.pageX
+      lastY = ev.pageY
+      containerElement.setPointerCapture(ev.pointerId)
+      ev.preventDefault()
+    }
+
+    const upHandler = (ev) => {
+      pointerDown = false
+      containerElement.releasePointerCapture(ev.pointerId)
+      ev.preventDefault()
+    }
+
+    const wheelHandler = (ev) => {
+      zoomDelta += ev.deltaY
+      ev.preventDefault()
+    }
+
+    containerElement.onpointermove = moveHandler
+    containerElement.onpointerdown = downHandler
+    containerElement.onpointerup = upHandler
+    containerElement.onwheel = wheelHandler
+  </script>
+</body>
+
+</html>
