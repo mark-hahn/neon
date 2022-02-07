@@ -76,6 +76,10 @@ void adjustPwm(void) {
 @far @interrupt void tim2IntHandler() {
   // used by millis()
   static u16 intCounter = 0;
+
+  // clear all timer 2 int flags
+  TIM2->SR1 = 0;
+
   if(++intCounter == INTS_PER_MS) {
     msCounter++;
     intCounter = 0;
@@ -164,6 +168,9 @@ void initLed(void) {
   pwm_out;
 
   set16(LED_PWM_, 0);  // start with pwm of zero
+  
+  // clear all timer 2 int flags
+  TIM2->SR1 = 0;
   
   TIM2->EGR  = TIM2_EGR_UG;  // force update of registers
   TIM2->CR1 |= TIM2_CR1_CEN; // 0x01 enable TM2
