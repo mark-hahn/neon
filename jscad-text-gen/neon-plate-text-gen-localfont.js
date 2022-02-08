@@ -2,14 +2,14 @@ const jscad             = require('@jscad/modeling');
 const {union, subtract} = jscad.booleans;
 const {sphere, cube, cuboid, cylinderElliptic, cylinder}  
        = jscad.primitives;
-const {vectorChar, vectorText} = jscad.text;
-const {hull, hullChain}        = jscad.hulls;
-const {translate, translateZ}  = jscad.transforms;
+const {vectorChar}      = jscad.text;
+const {hull, hullChain} = jscad.hulls;
+const {translate, translateZ} = jscad.transforms;
 
 const debug = false;
 
 // ------ default params --------- 
-let strParam    = "o";
+let strParam    = "l";
 let fontsizeAdj = 1.1;
 let vertOfs     = -7;
 let genHulls    = true;
@@ -109,10 +109,6 @@ const distPntToVec = (pnt, vec) => {
 
 const showVec = (pfx, vec) => {
   // console.log(typeof vec, typeof vec?.[0], typeof vec?.[1]);
-  if(!vec) {
-    console.log("======== showVec error, !vec");
-    return;
-  }
   console.log( pfx + ' ' +
     ((typeof vec?.[0] === 'undefined' || 
       typeof vec?.[1] === 'undefined') ? 'null' : (
@@ -409,7 +405,7 @@ const main = (params) => {
   let strWidth  = 0;
   let strHeight = 0;
   for(const char of strParam) {
-    const {width, height} = vectorChar(char);
+    const {width, height} = vectorChar({font:localFont}, char);
     strWidth  += width;
     strHeight = Math.max(strHeight, height);
   };
@@ -434,28 +430,17 @@ const main = (params) => {
   strWidth  = 0;
   for(const char of strParam) {
     console.log("\n======== CHAR:  " + char + '  ========');
-    console.log(vectorText({xOffset:strWidth, font: localFont}, char));
-    // const {width, segments:segs} = 
-    //        vectorText({xOffset:strWidth, font: localFont}, char);
-    const segs = vectorText({xOffset:strWidth, font: localFont}, char);
-    strWidth  = 20;
+    const {width, segments:segs} = 
+           vectorChar({font:localFont, xOffset:strWidth}, char);
+    strWidth  += width;
     segs.forEach( seg => {
       console.log("\n--- seg ---");
       let segIdx = 0;
-
-      for(let i=0; i < seg.length; i++) {
-        const point = seg[i];
-        console.log(i, seg[i][0], seg[i][1]);
-      }
-
-      for(let i=0; i < seg.length; i+=2) {
-        const point = seg[i];
-        console.log({i, textScale});
+      seg.forEach( point => {
         point[0] *= textScale;
         point[1] *= textScale;
-        console.log('point', point[0], point[1]);
         segIdx = handlePoint(point, segIdx, segIdx == seg.length-1);
-      }
+      });
     });
   };
   console.log("\n---- end ----");
@@ -463,9 +448,9 @@ const main = (params) => {
   addToHullChains(); // add remaining spheres to hullchains
   const allHulls = hullChains.concat(holes);
   const zOfs     =  plateDepth/2 - textZofs*radius;
-  // const hullsOfs = translate([xOfs, yOfs, zOfs], allHulls);
+  const hullsOfs = translate([xOfs, yOfs, zOfs], allHulls);
 
-  if(!genPlate) return allHulls;
+  if(!genPlate) return hullsOfs;
   
   const plate = cuboid({size: [plateW, plateH, plateDepth]});
 
@@ -508,9 +493,6 @@ const main = (params) => {
                             boltUL, boltUM, boltUR, boltBL, boltBM, boltBR);
 
   return plateOut;
-  // const outlines = vectorText({height: 42, align: 'right', font: localFont}, 'Wyatt')
-  // console.log({outlines});
-  // return sphere();
 };
 
 module.exports = {main, getParameterDefinitions};
