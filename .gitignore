@@ -5,3 +5,6 @@ neon.dep
 checkres.spy
 neon.pdb
 *.wed
+fonts
+*demo
+camBa
