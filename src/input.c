@@ -17,8 +17,6 @@ enum {
   modeSettingSpeed
 };
 
-u8 mode = modeNormal;
-
 // eeprom addresses
 enum {
   eeprom_chk_adr,
@@ -28,9 +26,18 @@ enum {
   eeprom_speed_adr
 };
 
+
+#define DEFAULT_BRIGHTNESS 5
+#define DEFAULT_ANIM_SPEED 5
+
+u8 brightness = DEFAULT_BRIGHTNESS;
+u8 mode       = modeNormal;
+u8 animation  = 0;
+u8 animSpeed  = DEFAULT_ANIM_SPEED;
+
 void eepromInit(void) {
   if(getEepromByte(eeprom_chk_adr) != 0x5a) {
-    setEepromByte(eeprom_brightness_adr,  (brightness - MIN_BRIGHTNESS));
+    setEepromByte(eeprom_brightness_adr, (brightness - MIN_BRIGHTNESS));
     setEepromByte(eeprom_mode_adr,        mode);
     setEepromByte(eeprom_anim_adr,        animation);
     setEepromByte(eeprom_speed_adr,       animSpeed);
@@ -44,6 +51,8 @@ void eepromInit(void) {
   }
 }
 
+bool justPoweredOn = false;
+
 // set pwron gpio pin to zero
 // this turns off 3.3v power to mcu
 // this never returns;
@@ -55,48 +64,48 @@ void powerDown() {
 u8 clickCount = 0;
 
 void clickTimeout(void) {
-  if(clickCount == 1 && 
-       mode != modeSettingAnim && 
-       mode != modeSettingSpeed) {
-    powerDown();  
-    return;
+  if(clickCount == 1) {  
+    switch(mode) {
+      case modeSettingAnim:
+        // not setting eeprom
+        mode = modeSettingSpeed; 
+        break;
+      case modeSettingSpeed:
+        mode = modeAnim;
+        setEepromByte(eeprom_mode_adr, mode);
+        flash(mode);
+        break;
+      default: powerDown();  
+    }
   }
-  if(clickCount >= 3) {
-    mode = modeSettingAnim;   
-    setEepromByte(eeprom_mode_adr,        mode);
-    return;
+  else if(clickCount >= 3) {
+    // not setting eeprom
+    mode       = modeSettingAnim; 
+    brightness = DEFAULT_BRIGHTNESS;
+    animSpeed  = DEFAULT_ANIM_SPEED;
   }
-  switch(mode) {
-    case modeNormal:     
-      // clickCount == 2
-      mode = modeNightLight;
-      setEepromByte(eeprom_mode_adr, mode);
-      flash(2); 
-      break;
+  else {
+  // clickCount == 2
+    switch(mode) {
+      case modeNormal:     
+        mode = modeNightLight;
+        setEepromByte(eeprom_mode_adr, mode);
+        flash(mode);
+        break;
 
-    case modeNightLight: 
-      // clickCount == 2
-      mode = modeAnim;
-      setEepromByte(eeprom_mode_adr, mode);
-      flash(3);
-      break;
+      case modeNightLight: 
+        mode = modeAnim;
+        setEepromByte(eeprom_mode_adr, mode);
+        flash(mode);
+        break;
 
-    case modeAnim: 
-      // clickCount == 2
-      stopAnimation(); 
-      mode = modeNormal;   
-      setEepromByte(eeprom_mode_adr, mode);
-      flash(1); 
-      break;
-
-    case modeSettingAnim:  
-      mode = modeSettingSpeed; 
-      setEepromByte(eeprom_mode_adr, mode);
-      break;
-    case modeSettingSpeed: 
-      mode = modeAnim;
-      setEepromByte(eeprom_mode_adr, mode);
-      break;
+      case modeAnim: 
+        stopAnimation(); 
+        mode = modeNormal;   
+        setEepromByte(eeprom_mode_adr, mode);
+        flash(mode);
+        break;
+    }
   }
   clickCount = 0;
 }
@@ -136,9 +145,13 @@ void adjSpeed(bool cw) {
 
 u16 lastClickTime = 0;
 
+volatile u16 buttonPressCount = 0; // debug
+
 void buttonPress(void) {
   lastClickTime = millis();
   clickCount++;
+
+  buttonPressCount++; // debug
 }
 
 void encoderTurn(bool cw) {
@@ -153,15 +166,10 @@ void encoderTurn(bool cw) {
 
 u16 lastBtnActivity = 0;
 
-volatile u16 buttonIntCount = 0; // debug
-
-// irq6 interrupt button pin rising edge (port D)
+// irq6 interrupt, button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
   static bool btnWaitDebounce  = false;
   u16 now = millis();
-
-  if(++buttonIntCount == 3) 
-    now = millis();
 
   // check button if no activity for 10ms
   if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS))
@@ -175,13 +183,17 @@ volatile u16 buttonIntCount = 0; // debug
   }
 }
 
-// irq5 interrupts either encoder pin rising edge (port C)
+// irq5 interrupt, either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
+  static bool lastEncHigh      = true;
   static bool encaWaitDebounce = false;
   static u16  lastEncaActivity = 0;
-  u16 now = millis();
 
-  if(enca_lvl == 0) return;  // int from enc B not A
+  u16 now = millis();
+  bool encHigh = (enca_lvl != 0);
+
+  if(!encHigh || lastEncHigh) return;  // not A rising
+  lastEncHigh = encHigh;
 
   if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS))
     encaWaitDebounce = false;
@@ -208,7 +220,7 @@ void initInput(void) {
   enca_in_int;
   encb_in_int;
 
-  // all ports interrupt on rising edge only
+  // all gpio ports interrupt on rising edge only
   EXTI->CR1 = 0x55;
 
   flash(1);  // indicate mode is normal
@@ -222,18 +234,23 @@ void initInput(void) {
 void inputLoop(void) {
   u16 now = millis();
 
+  if(justPoweredOn) {
+    flash(mode);
+    justPoweredOn = false;
+  }
+
   // click delay timeout starts on button release
   if(button_lvl) lastBtnActivity = now;
 
-// DEBUG
-  // if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
-  //   clickTimeout();
+  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
+    clickTimeout();
 
   // check for timeout while setting anim or speed
   if((mode == modeSettingAnim || mode == modeSettingSpeed) 
       && ((now - lastClickTime) > SETTING_DELAY)) {
     mode = modeAnim;
     setEepromByte(eeprom_mode_adr, mode);
+    flash(mode);
   }
 
   if(mode == modeAnim || 

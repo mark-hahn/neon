@@ -8,9 +8,10 @@ const {translate, translateZ} = jscad.transforms;
 
 const debug = false;
 
-let text = "Wyatt";
 
 // ------ default params --------- 
+let fontIdx     = 0;
+let text        = "Wyatt";
 let fontsizeAdj = 1.1;
 let vertOfs     = -7;
 let genHulls    = true;
@@ -353,7 +354,7 @@ const handlePoint = (point, segIdx, segLast) => {
 
 const getParameterDefinitions = () => {
   return [
-    { name: 'fontIdx', type: 'choice', caption: 'Font:', initial: 0, 
+    { name: 'fontIdx', type: 'choice', caption: 'Font:', initial: fontIdx, 
       // values: [...localFonts.keys()],
       // captions: localFonts.map(font => font.name)
       values: fontValues, captions: fontCaptions
