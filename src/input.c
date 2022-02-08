@@ -36,12 +36,12 @@ u8 animation  = 0;
 u8 animSpeed  = DEFAULT_ANIM_SPEED;
 
 void eepromInit(void) {
-  if(getEepromByte(eeprom_chk_adr) != 0x5a) {
+  if(getEepromByte(eeprom_chk_adr) != 0x5b) {
     setEepromByte(eeprom_brightness_adr, (brightness - MIN_BRIGHTNESS));
     setEepromByte(eeprom_mode_adr,        mode);
     setEepromByte(eeprom_anim_adr,        animation);
     setEepromByte(eeprom_speed_adr,       animSpeed);
-    setEepromByte(eeprom_chk_adr,         0x5a);
+    setEepromByte(eeprom_chk_adr,         0x5b);
   }
   else {
     brightness = (getEepromByte(eeprom_brightness_adr) + MIN_BRIGHTNESS);
