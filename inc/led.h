@@ -11,11 +11,6 @@
 #define MAX_BRIGHTNESS     14  // 128 ma
 #define DEFAULT_BRIGHTNESS 10  //  32 ma
 
-// dimness is set by animation
-// 0 is 0% brightness, MAX_DIMMNESS is 100% brightness
-// 0b0, 0b1, 0b10, 0b11, 0b100, 0b110,..., 0b10000000
-#define MAX_DIMMNESS 1024
-
 #define MAX_PWM       1024  // TODO -- measure for 50 ma
 #define MAX_CURRENT 0xffff  // TODO -- measure for 50 ma
 
@@ -24,7 +19,6 @@
 
 // simple indexes
 extern u8 brightness;  // normal brightess, max in animation
-extern u8 dimness;     // set in animation to fade in/out
 
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);

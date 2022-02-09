@@ -15,16 +15,9 @@
 
 // globals
 u8  brightness = DEFAULT_BRIGHTNESS;
-// 0 is full brightness, MAX_DIMMNESS is dimmest
-u8  dimness    = MAX_DIMMNESS;
 
 // convert brightness to 16-bit factor
 u16 brightnessFactor(void) {
-
-}
-
-// convert dimness to 16-bit factor
-u16 dimnessFactor(void) {
 
 }
 
@@ -43,25 +36,24 @@ u16 ledCurrentTgt = 0;
 
 #define PWM_COUNT_PER_MA 2  // TODO -- guess, measure this
 
-// sets desired led current based on brightness and dimness
+// sets desired led current based on brightness
 void setLedCurrentTgt() {
-  u32 highDimFact;
-  if(brightness == 0 || dimness == 0) {
+  if(brightness == 0) {
     ledCurrentTgt = 0;
     return;
   }
-  if(brightness == MAX_BRIGHTNESS && dimness == MAX_DIMMNESS) {
+  if(brightness == MAX_BRIGHTNESS)
     ledCurrentTgt = MAX_CURRENT;
     return;
   }
-  highDimFact = ((u32) 0x10000) * (u32) (MAX_DIMMNESS - dimness);
+
+
 
   // brightness (0..7)  is 2^^(brightness-1) ma,  1/2, 1, .. 64 ma
   if((brightness-1) >= 0)
-    ledCurrentTgt = (u16) ((highDimFact << (brightness - 1)) >> 16);
-  else 
-    ledCurrentTgt = (u16) ((highDimFact >> (-brightness)) >> 16);
-  
+
+
+
   if(ledCurrentTgt > MAX_CURRENT) ledCurrentTgt = MAX_CURRENT;
 }
 
