@@ -15,10 +15,10 @@ enum {
   numAnims       // count of anims above
 };
 
-extern u8   animation;
+extern u8 animation;
 
 // speed (0..10) is 2^^(speed-4) secs,  1/16..64 secs per action
-extern u8   animSpeed;
+extern u8 animSpeed;
 
 void stopAnimation(void);
 void doAnim(void);

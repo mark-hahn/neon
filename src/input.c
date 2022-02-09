@@ -173,9 +173,6 @@ void initInput(void) {
   // set encoder (IRQ5) interrupt priority to 2 (middle)
   ITC->ISPR2 = (ITC->ISPR2 & ~0x0c) | 0x00; // I1I0 is 0b00
 
-  brightness = getEepromByte(eeprom_brightness_adr);
-  mode       = getEepromByte(eeprom_mode_adr);
-
   // button and encoders are external interrupts
   button_in_int;
   enca_in_int;
