@@ -4,6 +4,15 @@
 #include "stm8s.h"
 #include "main.h"
 
+// operation modes
+enum {
+  modeNormal,
+  modeNightLight,
+  modeAnim,
+  modeSettingAnim,
+  modeSettingSpeed
+};
+
 extern u8 mode;
 
 // interrupts every button or encoder pin change (ports C and D)

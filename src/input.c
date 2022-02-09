@@ -8,17 +8,10 @@
 
 #define EEPROM_CHK_BYTE 0x5a
 
-// operation modes
-enum {
-  modeNormal,
-  modeNightLight,
-  modeAnim,
-  modeSettingAnim,
-  modeSettingSpeed
-};
+// global
+u8 mode = 0;
 
 bool justPoweredOn = false;
-u8   mode          = 0;
 
 // set pwron gpio pin to zero
 // this turns off 3.3v power to mcu

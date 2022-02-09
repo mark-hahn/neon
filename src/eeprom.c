@@ -27,8 +27,6 @@ u8 getEepromByte(u16 addr) {
 }
 
 void initEeprom(void) {
-
-void initEeprom(void) {
   if(getEepromByte(eeprom_chk_adr) != 0x5b) {
     setEepromByte(eeprom_brightness_adr,  brightness);
     setEepromByte(eeprom_mode_adr,        mode);

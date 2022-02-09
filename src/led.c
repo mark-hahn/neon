@@ -13,6 +13,7 @@
 #define LED_PWM_L TIM2->CCR2L
 #define LED_PWM_H TIM2->CCR2H
 
+// globals
 u8  brightness = DEFAULT_BRIGHTNESS;
 u16 dimFactor  = NOT_DIMMING_FACTOR;
 
