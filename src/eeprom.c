@@ -1,5 +1,8 @@
 #include "stm8s.h"
 #include "main.h"
+#include "animation.h"
+#include "input.h"
+#include "led.h"
 
 #define EEPROM_BASE_ADDRESSS  0x4000
 
@@ -21,4 +24,16 @@ void setEepromByte(u16 addr, u8 data) {
 // addr is 0 to 639
 u8 getEepromByte(u16 addr) {
   return (*(uint8_t *) (EEPROM_BASE_ADDRESSS + addr)) ;
+}
+
+void initEeprom(void) {
+
+void initEeprom(void) {
+  if(getEepromByte(eeprom_chk_adr) != 0x5b) {
+    setEepromByte(eeprom_brightness_adr,  brightness);
+    setEepromByte(eeprom_mode_adr,        mode);
+    setEepromByte(eeprom_anim_adr,        animation);
+    setEepromByte(eeprom_speed_adr,       animSpeed);
+    setEepromByte(eeprom_chk_adr,         0x5b);
+  }
 }

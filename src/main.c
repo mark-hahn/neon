@@ -22,6 +22,8 @@ void main(void) {
   initAdc();
   initLed();
   initAnimation();
+  // set all vars if not initted
+  initEeprom();
 
   ints_on; // enable all interrupts
 

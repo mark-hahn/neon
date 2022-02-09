@@ -13,6 +13,9 @@
 #define LED_PWM_L TIM2->CCR2L
 #define LED_PWM_H TIM2->CCR2H
 
+u8  brightness = DEFAULT_BRIGHTNESS;
+u16 dimFactor  = NOT_DIMMING_FACTOR;
+
 volatile u16 msCounter;
 
 // returns elapsed ms, rolls over every 65 secs
@@ -25,8 +28,6 @@ u16 millis(void) {
 }
 
 u16 ledCurrentTgt = 0;
-i8  brightness    = MAX_BRIGHTNESS;
-u16 dimFactor     = NOT_DIMMING_FACTOR;
 
 #define PWM_COUNT_PER_MA 2  // TODO -- guess, measure this
 

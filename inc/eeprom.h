@@ -4,8 +4,19 @@
 #include "stm8s.h"
 #include "main.h"
 
+// eeprom addresses
+enum {
+  eeprom_chk_adr,
+  eeprom_brightness_adr,
+  eeprom_mode_adr,
+  eeprom_anim_adr,
+  eeprom_speed_adr
+};
+
 // addr is 0 to 639
 void setEepromByte(u16 addr, u8 data);
 u8   getEepromByte(u16 addr);
+
+void initEeprom(void);
 
 #endif

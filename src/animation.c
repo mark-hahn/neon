@@ -7,11 +7,11 @@
 #include "animation.h"
 
 // globals
-i8   animation = 1;
-i8   animSpeed = MAX_SPEED/2;
-bool flashing  = false;  // overides everything
+i8 animation = 0;
+u8 animSpeed = DEFAULT_ANIM_SPEED;
 
 bool animating = false;
+bool flashing  = false;  // overides everything
 
 void initAnimVars(void) {
   // all animations start with led off
@@ -53,7 +53,8 @@ void flash(u8 count) {
 
 // called at power-up
 void initAnimation(void) {
-
+  animation  = getEepromByte(eeprom_anim_adr);
+  animSpeed  = getEepromByte(eeprom_speed_adr);
 }
 
 void animationLoop(void) {
