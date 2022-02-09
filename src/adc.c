@@ -12,6 +12,8 @@
 #define CURSENS_CH   4
 #define LGTSENS_CH   5
 
+u16 lightSens = 0x0200;  // global, set in handleAdcInt
+
  // channel being converted
 u8 curAdcChan = BSENS_CH;
 
@@ -26,15 +28,6 @@ u16 waitForAdc(void) {
   while ((ADC1->CSR & ADC1_CSR_EOC) == 0);
   ADC1->CSR &= ~ADC1_CSR_EOC; // turn off end-of-conversion flag
   return get16(ADC1->DR);
-}
-
-lightSens = 0x0200;  // set in handleAdcInt
-
-// ambient light (photo-resistor)
-// meaningless units
-// called from input.c
-u16 getAmbientLight(void) {
-  return lightSens;
 }
 
 void initAdc(void) {
@@ -84,11 +77,11 @@ u16 handleAdcInt(void) {
   static u16 batteryAdc = 0x0200;
   u16 current;
 
-  if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
-
   // wait for previous BSENS_CH or LGTSENS_CH conversion
   if(curAdcChan == BSENS_CH) batteryAdc = waitForAdc(); 
   else                       lightSens  = waitForAdc(); 
+
+  if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
 
   // current is cursens adc adjusted for battery voltage
   startAdc(CURSENS_CH);

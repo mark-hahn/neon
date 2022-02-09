@@ -6,8 +6,7 @@
 
 // ambient light (photo-resistor)
 // meaningless units
-// called from input.c
-u16 getAmbientLight(void);
+extern u16 lightSens; 
 
 void initAdc(void);
 
