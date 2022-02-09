@@ -3,7 +3,6 @@
 #include "gpio.h"
 #include "adc.h"
 #include "input.h"
-#include "animation.h"
 #include "led.h"
 
 #define TIM2_PRESCALE    0  // clocks at full 16 MHz
@@ -92,7 +91,6 @@ void adjustPwm(void) {
   // run these each interrupt, sort of like a main loop
   adjustPwm();
   inputLoop();
-  animationLoop();
 }
 
 void initLed(void) {

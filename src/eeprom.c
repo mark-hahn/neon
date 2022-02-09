@@ -1,6 +1,5 @@
 #include "stm8s.h"
 #include "main.h"
-#include "animation.h"
 #include "input.h"
 #include "led.h"
 #include "eeprom.h"
@@ -31,14 +30,10 @@ void initEeprom(void) {
   if(getEepromByte(eeprom_chk_adr) != 0x5b) {
     setEepromByte(eeprom_mode_adr,        mode);
     setEepromByte(eeprom_brightness_adr,  brightness);
-    setEepromByte(eeprom_anim_adr,        animation);
-    setEepromByte(eeprom_speed_adr,       animSpeed);
     setEepromByte(eeprom_chk_adr,         0x5b);
   }
   else {
     mode       = getEepromByte(eeprom_mode_adr);
     brightness = getEepromByte(eeprom_brightness_adr);
-    animation  = getEepromByte(eeprom_anim_adr);
-    animSpeed  = getEepromByte(eeprom_speed_adr);
   }
 }

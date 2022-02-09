@@ -8,9 +8,7 @@
 enum {
   eeprom_chk_adr,
   eeprom_brightness_adr,
-  eeprom_mode_adr,
-  eeprom_anim_adr,
-  eeprom_speed_adr
+  eeprom_mode_adr
 };
 
 // addr is 0 to 639

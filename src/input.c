@@ -2,7 +2,6 @@
 #include "main.h"
 #include "gpio.h"
 #include "eeprom.h"
-#include "animation.h"
 #include "input.h"
 #include "led.h"
 
@@ -10,8 +9,6 @@
 
 // global
 u8 mode = 0;
-
-bool justPoweredOn = false;
 
 // set pwron gpio pin to zero
 // this turns off 3.3v power to mcu
@@ -24,28 +21,8 @@ void powerDown() {
 u8 clickCount = 0;
 
 void clickTimeout(void) {
-  if(clickCount == 1) {  
-    switch(mode) {
-      case modeSettingAnim:
-        // not setting eeprom
-        mode = modeSettingSpeed; 
-        break;
-      case modeSettingSpeed:
-        mode = modeAnim;
-        setEepromByte(eeprom_mode_adr, mode);
-        flash(mode);
-        break;
-      default: powerDown();  
-    }
-  }
-  else if(clickCount >= 3) {
-    // not setting eeprom
-    mode       = modeSettingAnim; 
-    brightness = DEFAULT_BRIGHTNESS;
-    animSpeed  = DEFAULT_ANIM_SPEED;
-  }
-  else {
-  // clickCount == 2
+  if(clickCount == 1) powerDown();  
+  else if(clickCount >= 2) {
     switch(mode) {
       case modeNormal:     
         mode = modeNightLight;
@@ -54,13 +31,12 @@ void clickTimeout(void) {
         break;
 
       case modeNightLight: 
-        mode = modeAnim;
+        mode = modeAdjust;
         setEepromByte(eeprom_mode_adr, mode);
         flash(mode);
         break;
 
-      case modeAnim: 
-        stopAnimation(); 
+      case modeAdjust: 
         mode = modeNormal;   
         setEepromByte(eeprom_mode_adr, mode);
         flash(mode);
@@ -81,28 +57,6 @@ void adjBrightness(bool cw) {
   }
 }
 
-void chgAnim(bool cw) {
-  if( cw && animation < (numAnims-1)) {
-    animation++;
-    setEepromByte(eeprom_anim_adr, animation);
-  }
-  if(!cw && animation > 0) {
-    animation--;
-    setEepromByte(eeprom_anim_adr, animation);
-  }
-}
-
-void adjSpeed(bool cw) {
-  if( cw && animSpeed < MAX_ANIM_SPEED) {
-    animSpeed++;
-    setEepromByte(eeprom_speed_adr, animSpeed);
-  }
-  if(!cw && animSpeed > 0) {
-    animSpeed--;
-    setEepromByte(eeprom_speed_adr, animSpeed);
-  }
-}
-
 u16 lastClickTime = 0;
 
 volatile u16 buttonPressCount = 0; // debug
@@ -112,14 +66,6 @@ void buttonPress(void) {
   clickCount++;
 
   buttonPressCount++; // debug
-}
-
-void encoderTurn(bool cw) {
-  switch(mode) {
-    case modeSettingAnim:  chgAnim(cw);       break;
-    case modeSettingSpeed: adjSpeed(cw);      break;
-    default:               adjBrightness(cw); break;
-  }
 }
 
 #define DEBOUNCE_DELAY_MS 1000
@@ -159,8 +105,8 @@ u16 lastBtnActivity = 0;
     encaWaitDebounce = false;
 
   if(!encaWaitDebounce) {
-    if(encb_lvl) encoderTurn(true);
-    else         encoderTurn(false);
+    if(encb_lvl) adjBrightness(true);
+    else         adjBrightness(false);
     lastEncaActivity = now;
     encaWaitDebounce = true;
   }
@@ -188,6 +134,7 @@ void initInput(void) {
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
 void inputLoop(void) {
+  bool justPoweredOn = true;
   u16 now = millis();
 
   if(justPoweredOn) {
@@ -200,18 +147,5 @@ void inputLoop(void) {
 
   if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
     clickTimeout();
-
-  // check for timeout while setting anim or speed
-  if((mode == modeSettingAnim || mode == modeSettingSpeed) 
-      && ((now - lastClickTime) > SETTING_DELAY)) {
-    mode = modeAnim;
-    setEepromByte(eeprom_mode_adr, mode);
-    flash(mode);
-  }
-
-  if(mode == modeAnim || 
-     mode == modeSettingAnim ||
-     mode == modeSettingSpeed) 
-    doAnim();
 }
 

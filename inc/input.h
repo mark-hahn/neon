@@ -8,9 +8,7 @@
 enum {
   modeNormal,
   modeNightLight,
-  modeAnim,
-  modeSettingAnim,
-  modeSettingSpeed
+  modeAdjust
 };
 
 extern u8 mode;

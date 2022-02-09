@@ -6,7 +6,6 @@
 #include "input.h"
 #include "adc.h"
 #include "led.h"
-#include "animation.h"
 #include "eeprom.h"
 
 void main(void) {
