@@ -7,6 +7,7 @@
 #include "adc.h"
 #include "led.h"
 #include "animation.h"
+#include "eeprom.h"
 
 void main(void) {
   // turn on power pin quickly to keep power on
@@ -21,7 +22,6 @@ void main(void) {
   initInput();
   initAdc();
   initLed();
-  initAnimation();
   initEeprom();
 
   ints_on; // enable all interrupts

@@ -6,11 +6,15 @@
 
 // pwm is pin a3 -- TIM2_3
 
-// brightness (-1..6)  is 2^^brightness ma,  1/2..64 ma
-#define MAX_BRIGHTNESS        6 
-#define DEFAULT_BRIGHTNESS    5
+// brightness (0..14) is index for brightness of 0..128 ma
+// 0b0, 0b1, 0b10, 0b11, 0b100, 0b110,..., 0b10000000 ma
+#define MAX_BRIGHTNESS     14  // 128 ma
+#define DEFAULT_BRIGHTNESS 10  //  32 ma
 
-#define NOT_DIMMING_FACTOR 1024
+// dimness is set by animation
+// 0 is 0% brightness, MAX_DIMMNESS is 100% brightness
+// 0b0, 0b1, 0b10, 0b11, 0b100, 0b110,..., 0b10000000
+#define MAX_DIMMNESS 1024
 
 #define MAX_PWM       1024  // TODO -- measure for 50 ma
 #define MAX_CURRENT 0xffff  // TODO -- measure for 50 ma
@@ -18,8 +22,9 @@
 // battery divided by this before multipling battery sense adc
 #define BAT_FACTOR            2
 
-extern u8  brightness;
-extern u16 dimFactor;
+// simple indexes
+extern u8 brightness;  // normal brightess, max in animation
+extern u8 dimness;     // set in animation to fade in/out
 
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);

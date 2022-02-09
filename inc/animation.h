@@ -5,7 +5,9 @@
 #include "stm8s.h"
 #include "main.h"
 
-#define MAX_SPEED          10 
+// anim speed means something different for each anim type
+// but, range is always zero to MAX_ANIM_SPEED
+#define MAX_ANIM_SPEED     10 
 #define DEFAULT_ANIM_SPEED  5
 
 enum {
@@ -24,7 +26,6 @@ void stopAnimation(void);
 void doAnim(void);
 void flash(u8 count);
 
-void initAnimation(void);
 void animationLoop(void);
 
 #endif  // _ANIMATION_

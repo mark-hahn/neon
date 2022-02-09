@@ -3,6 +3,7 @@
 #include "animation.h"
 #include "input.h"
 #include "led.h"
+#include "eeprom.h"
 
 #define EEPROM_BASE_ADDRESSS  0x4000
 

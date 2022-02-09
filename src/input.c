@@ -93,7 +93,7 @@ void chgAnim(bool cw) {
 }
 
 void adjSpeed(bool cw) {
-  if( cw && animSpeed < MAX_SPEED) {
+  if( cw && animSpeed < MAX_ANIM_SPEED) {
     animSpeed++;
     setEepromByte(eeprom_speed_adr, animSpeed);
   }
