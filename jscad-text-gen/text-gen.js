@@ -11,7 +11,7 @@ const debugScale = true;
 
 // ------ default params --------- 
 let fontIdx     = 0;
-let text        = "Wyatt";
+let text        = "o";
 let fontsizeAdj = 1.1;
 let vertOfs     = -7;
 let genHulls    = true;
@@ -36,7 +36,10 @@ const padSides    = 20;
 const padTopBot   = 15;
 // const baseline   = 0.3;   // fraction of plateH
 
-const pntEq = (A,B) => A[0] == B[0] && A[1] == B[1];
+const ptEq         = (A,B) => A && B && A[0] == B[0] && A[1] == B[1];
+const vecEq        = (A,B) => A && B && ptEq(A[0],B[0]) && ptEq(A[1],B[1]);
+const vecRevEq     = (A,B) => A && B && ptEq(A[0],B[1]) && ptEq(A[1],B[0]);
+const ptTouchesEnd = (P,V) => P && V && ptEq(P, V[0]) || ptEq(P, V[1]);
 
 // return intersection point if exists
 // but only if point isn't one of CD end points
@@ -53,8 +56,7 @@ const intersectionPoint = (segAB, segCD) => {
   if(!(r >= 0 && r <= 1 && s >= 0 && s <= 1)) 
     return null;   // doesn't intersect
   const iPnt = [Ax + r*(Bx-Ax), Ay + r*(By-Ay)]; // intersection point
-  if((pntEq(iPnt,segAB[0]) || pntEq(iPnt,segAB[1])) ||
-     (pntEq(iPnt,segCD[0]) || pntEq(iPnt,segCD[1]))) 
+  if(ptTouchesEnd(iPnt,segAB) || ptTouchesEnd(iPnt,segCD)) 
     return null;  // ends of vectors at same point
   return iPnt;
 }
@@ -152,23 +154,20 @@ const backUpPoint = (prevVec, vec, chkHead) => {
   return null;
 }
 
+let lastVec = null;
 const prevVecs = [];
 
 const chkTooClose = (vec, first) => {
+
   // let prevVecsTmp = (first ? prevVecs : prevVecs.slice(0,-1));
   // checking against all previous vecs (slow way)
   for(const prevVec of prevVecs) {
     if(debug) showVec('- checking prev vec', prevVec);
 
-    const prevVecIsLastVec = (lastVec && 
-                              prevVec[0] == lastVec[0] && 
-                              prevVec[1] == lastVec[1]);
-
     // check exact match either direction with prev vec
     if(debug)  showVec('check exact match, old vec', prevVec);
     if(debug)  showVec('                   new vec', vec);
-    if((pntEq(prevVec[0],vec[0]) && pntEq(prevVec[1],vec[1])) ||
-       (pntEq(prevVec[0],vec[1]) && pntEq(prevVec[1],vec[0]))) {
+    if(vecEq(prevVec, vec) || vecRevEq(prevVec, vec)) {
       if(debug) showVec('vec exactly matches prevVec', prevVec);
       return {  // skip vec
         headClose:true, tailClose:true, vec1:null, vec2: null};
@@ -178,13 +177,12 @@ const chkTooClose = (vec, first) => {
     // check if vec is extending last, vec tail == lastVec.head
     if(debug) showVec('checking vec extension, lastVec', lastVec);
     if(debug) showVec('                            vec', vec);
-    const extendingLastVec = (lastVec && pntEq(vec[0], lastVec[1]));
+    const extendingLastVec = lastVec && (ptEq(vec[0], lastVec[1]));
     if(extendingLastVec) {
       if(debug) console.log('vec is extending last, skipping tail check');
     }
     else {
-      if((pntEq(prevVec[0], vec[0]) ||
-          pntEq(prevVec[1], vec[0]))) {
+      if(ptTouchesEnd(vec[0],prevVec)) {
         // vec tail is touching prevVec head or tail
         if(debug)  showVec('tail touches prev', prevVec);
         const backUpPnt = backUpPoint(prevVec, vec, false);
@@ -195,8 +193,7 @@ const chkTooClose = (vec, first) => {
           vec1:[backUpPnt, vec[1]], vec2:null};
       }
     }
-    if( pntEq(prevVec[0], vec[1]) ||
-        pntEq(prevVec[1], vec[1])) {
+    if(ptTouchesEnd(vec[1],prevVec)) {
       // vec head is touching prevVec head or tail
       if(debug)  showVec('head touching prev', prevVec);
       const backUpPnt = backUpPoint(prevVec, vec, true);
@@ -258,9 +255,9 @@ const chkTooClose = (vec, first) => {
         }
       }
     }
-    if(prevVecIsLastVec) {
+    if(vecEq(prevVec, lastVec)) {
       if (debug) console.log(
-        'skipping head dist check to last vec');
+        'prevVec == lastVec, skipping head dist check to last vec');
     }
     else {
       if (debug) console.log('starting head dist chk');
@@ -288,8 +285,6 @@ const chkTooClose = (vec, first) => {
   // vec not too close to any prev vec
   return {headClose:false, tailClose:false, vec1: null, vec2: null};
 }
-
-const ptEq = (A,B) => (A[0] == B[0] && A[1] == B[1]);
 
 const hullChains = [];
 let   spherePts  = [];
@@ -339,12 +334,11 @@ const addHole = (tailPoint, headPoint) => {
 }
 
 let lastPoint = null;
-let lastVec   = null;
 
 // returns next seg idx
 const handlePoint = (point, segIdx, segLast) => {
   if(segIdx == 0) {
-    // first point
+    // first point of segment
     if (debug) console.log('first point of segment', 
                   point[0].toFixed(1), point[1].toFixed(1));
     if (debug) console.log('only setting lastPoint');
@@ -356,6 +350,16 @@ const handlePoint = (point, segIdx, segLast) => {
   let vec = [lastPoint, point];
   console.log('\n-- handlePoint segIdx, segLast:', segIdx, segLast);
   showVec(    '                       vec:', vec);
+
+  // if(lastVec && ptEq(vec[0],lastVec[1]) && ptEq(vec[1],lastVec[0])) {
+  //   // vec is reverse of last vec
+  //   // these fonts go back over path a second time
+  //   // we can ignore all remaining points/vecs in this segment
+  //   console.log("\npath is reversing -- ignore rest of segment\n");
+  //   if(debug) showVec('add last hole to lastVec', lastVec);
+  //     addHole(lastVec[0], lastVec[1]);
+  //   return null;
+  // }
 
   const {headClose, tailClose, vec1, vec2} = 
                        chkTooClose(vec, (segIdx == 1));
@@ -501,17 +505,19 @@ const main = (params) => {
 
   strWidth  = 0;
   for(const char of text) {
-    console.log("\n======== CHAR:  " + char + '  ========');
-    const {width, segments:segs} = 
-               vectorChar({font, xOffset:strWidth}, char);
+    const charRes = vectorChar({font, xOffset:strWidth}, char);
+    const {width, segments:segs} = charRes;
+    console.log("\n======== CHAR: " + char + 
+                 ', segment count:', segs.length);
     strWidth  += width;
     segs.forEach( seg => {
-      console.log("\n--- seg ---");
+      console.log("\n--- seg ---, point count: ", seg.length);
       let segIdx = 0;
-      seg.forEach( point => {
+      seg.every( point => {
         point[0] *= textScale;
         point[1] *= textScale;
         segIdx = handlePoint(point, segIdx, segIdx == seg.length-1);
+        return (segIdx != null);  // if null, break from both loops
       });
     });
   };
