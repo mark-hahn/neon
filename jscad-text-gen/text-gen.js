@@ -155,6 +155,7 @@ const backUpPoint = (prevVec, vec, chkHead) => {
 }
 
 let lastVec = null;
+if(debug) showVec('setting lastVec', lastVec);
 const prevVecs = [];
 
 const chkTooClose = (vec, first) => {
@@ -231,7 +232,7 @@ const chkTooClose = (vec, first) => {
     // tail point of vec only checked on ...
     //   first vector and not extendingLastVec
     if(first && !extendingLastVec) {
-
+      if(debug) showVec('lastVec:', lastVec);
       if (debug) console.log('starting tail dist chk');
       const dist2prev = distPntToVec(vec[0], prevVec);
       if(dist2prev < (2 * radius)) {
@@ -255,6 +256,7 @@ const chkTooClose = (vec, first) => {
         }
       }
     }
+    if(debug) showVec('lastVec:', lastVec);
     if(vecEq(prevVec, lastVec)) {
       if (debug) console.log(
         'prevVec == lastVec, skipping head dist check to last vec');
@@ -341,15 +343,15 @@ const handlePoint = (point, segIdx, segLast) => {
     // first point of segment
     if (debug) console.log('first point of segment', 
                   point[0].toFixed(1), point[1].toFixed(1));
-    if (debug) console.log('only setting lastPoint');
     lastPoint = point;
     lastVec   = null;
+    if(debug) showVec('setting lastVec', lastVec);
     return 1; // next segidx is 1
   }
   // not first point
   let vec = [lastPoint, point];
-  console.log('\n-- handlePoint segIdx, segLast:', segIdx, segLast);
-  showVec(    '                       vec:', vec);
+  console.log('\n-- handlePoint segIdx: '+segIdx+', segLast: '+segLast);
+  showVec(    '\n-- vec:', vec);
 
   // if(lastVec && ptEq(vec[0],lastVec[1]) && ptEq(vec[1],lastVec[0])) {
   //   // vec is reverse of last vec
@@ -373,6 +375,7 @@ const handlePoint = (point, segIdx, segLast) => {
       // ---- both ends too close, skipping vec -----
       if(debug) showVec('both ends too close, skipping vec', vec);
       lastPoint = null;
+      if(debug) showVec('checking lastVec', lastVec);
       if(lastVec) {
         if(debug) showVec('add last hole to lastVec', lastVec);
         addHole(lastVec[0], lastVec[1]);
@@ -386,13 +389,17 @@ const handlePoint = (point, segIdx, segLast) => {
     addHull(vec1);
     if(debug) showVec('adding to prevVecs vec1', vec1);
     prevVecs.push(vec1);
+    lastVec = vec1;
+    if(debug) showVec('setting lastVec:', lastVec);
     if(vec2) {
-      // had intersetion
+      // had intersection
       // vec was split into vec1 and vec2
       // handle vec2 as first in new segment
       // recursive
       lastPoint = vec2[0];
       handlePoint(vec2[1], 1, segLast);
+      lastVec = vec2;
+      if(debug) showVec('(intersection) lastVec:', lastVec);
       if(!segLast) return 2;  // next segidx is 2
     }
     if(debug) {
@@ -414,6 +421,7 @@ const handlePoint = (point, segIdx, segLast) => {
   prevVecs.push(vec);
   lastPoint = point;
   lastVec   = vec;
+  if(debug) showVec('lastVec = vec', lastVec);
   return segIdx + 1; // next segidx
 }
 
@@ -575,3 +583,23 @@ const main = (params) => {
 };
 module.exports = {main, getParameterDefinitions};
 
+
+const fonts = {
+HersheySans1:{height:500,
+32:[378,],
+33:[315,315,662,315,220,,315,63,284,31.5,315,0,346,31.5,315,63,],
+87:[756,158,662,315,0,,472,662,315,0,,472,662,630,0,,788,662,630,0,],
+89:[567,126,662,378,346,378,0,,630,662,378,346,],
+97:[598,567,441,567,0,,567,346,504,410,441,441,346,441,284,410,220,346,189,252,189,189,220,94.5,284,31.5,346,0,441,0,504,31.5,567,94.5,],
+116:[378,252,662,252,126,284,31.5,346,0,410,0,,158,441,378,441,],
+121:[504,158,441,346,0,,536,441,346,0,284,-126,220,-189,158,-220,126,-220,],},
+
+HersheyGothEnglish:{height:500,
+32:[378,],
+33:[378,296,662,265,630,202,598,265,567,296,220,,296,567,328,598,296,630,265,598,296,567,296,220,,296,662,328,630,391,598,328,567,296,220,,296,94.5,233,31.5,296,0,359,31.5,296,94.5,,296,63,265,31.5,328,31.5,296,63,],
+87:[850,126,662,158,630,189,567,189,378,126,378,94.5,346,94.5,284,126,315,189,315,189,94.5,126,63,,189,598,220,536,220,94.5,,126,346,220,346,,252,63,315,63,378,31.5,,126,662,189,630,220,598,252,536,252,94.5,346,94.5,410,63,,126,63,220,63,315,31.5,346,0,410,63,504,94.5,567,63,598,0,662,63,756,94.5,,346,598,441,662,504,598,504,94.5,598,94.5,662,63,,441,630,472,598,472,94.5,,346,598,410,598,441,567,441,94.5,410,63,,598,63,630,31.5,,598,598,693,662,756,598,756,94.5,,693,630,724,598,724,94.5,,598,598,662,598,693,567,693,94.5,662,63,,346,598,346,94.5,,598,598,598,94.5,,346,410,441,410,,346,284,441,284,,598,410,693,410,,598,284,693,284,],
+89:[724,126,662,158,630,189,567,189,378,126,378,94.5,346,94.5,284,126,315,189,315,189,94.5,126,63,,189,598,220,536,220,94.5,,126,346,220,346,,252,63,346,63,410,31.5,,126,662,189,630,220,598,252,536,252,94.5,378,94.5,472,63,,126,63,220,63,315,31.5,378,0,472,63,567,94.5,,378,536,472,567,536,598,598,662,630,630,693,598,630,567,630,-94.5,598,-158,536,-220,472,-189,346,-158,189,-158,,598,567,630,598,598,630,567,598,598,567,598,63,,536,598,567,567,567,94.5,630,0,,567,-189,504,-158,410,-158,,598,-158,504,-126,315,-126,189,-158,,378,536,378,94.5,,378,441,441,410,504,410,567,441,,378,252,441,284,504,284,567,252,],
+97:[536,220,284,158,220,126,158,126,94.5,158,31.5,220,0,284,63,378,94.5,,126,158,158,94.5,189,63,252,31.5,,158,220,158,158,189,94.5,252,63,284,63,,158,346,220,346,315,378,378,410,410,441,472,378,441,346,441,94.5,472,63,504,63,,189,410,158,378,252,378,,346,378,441,378,410,410,410,63,441,31.5,,126,378,189,441,220,410,284,378,378,346,378,63,441,0,504,63,,126,378,284,220,],
+116:[315,126,598,158,536,158,94.5,94.5,63,126,63,189,31.5,220,0,,189,536,158,598,189,630,189,63,252,31.5,,126,598,220,662,220,94.5,284,63,315,63,252,31.5,220,0,,63,441,158,441,,220,441,315,441,],
+121:[567,94.5,378,126,378,158,346,158,94.5,94.5,63,,126,410,189,378,189,63,252,31.5,,94.5,378,158,441,220,378,220,94.5,284,63,315,63,,94.5,63,126,63,189,31.5,220,0,252,31.5,315,63,410,94.5,,410,441,441,410,504,378,536,378,472,346,472,-31.5,441,-126,378,-189,315,-220,284,-189,220,-158,158,-158,,378,410,441,378,441,-31.5,,346,-189,284,-158,252,-158,,410,441,346,378,410,346,410,31.5,441,-63,441,-126,,378,-189,346,-158,284,-126,220,-126,158,-158,],},
+}
