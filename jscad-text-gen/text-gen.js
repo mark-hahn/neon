@@ -9,9 +9,11 @@ const {translate, translateZ} = jscad.transforms;
 const debug      = false;
 const debugScale = false;
 
+const MAX_ANGLE = 90
+
 // ------ default params --------- 
 let fontIdx     = 0;
-let text        = 'Wyatt';
+let text        = 'W';
 let fontsizeAdj = 1.1;
 let vertOfs     = -7;
 let genHulls    = true;
@@ -154,8 +156,136 @@ const backUpPoint = (prevVec, vec, chkHead) => {
   return null;
 }
 
+
+const hullChains = [];
+let   spherePts  = [];
+
+const addToHullChains = () => {
+  if(spherePts.length) {
+    const spheres = spherePts.map((pt) =>
+      sphere({radius, segments, center: pt.concat(0)}));
+    hullChains.push(hullChain(...spheres));
+  }
+}
+
+const addHull = (vec) => {
+  showVec(' - hull', vec);
+  if(genHulls) {
+    if(spherePts.length && ptEq(spherePts.at(-1), vec[0]))
+      spherePts.push(vec[1]);
+    else {
+      addToHullChains();
+      spherePts = [vec[0], vec[1]];
+    }
+  }
+}
+
+holes = [];
+
+const addHole = (tailPoint, headPoint) => {
+  showVec(' - hole', [tailPoint, headPoint]);
+  if(genHoles) {
+    const w       = headPoint[0] - tailPoint[0];
+    const h       = headPoint[1] - tailPoint[1];
+    const len     = Math.sqrt(w*w + h*h);
+    let scale   = plateDepth/len;
+    let holeLen = plateDepth*1.414;
+    if(debugScale) {
+      scale   = .1;
+      holeLen = .1;
+    }
+    const x       = headPoint[0] + scale*w;
+    const y       = headPoint[1] + scale*h;
+    holes.push( hull(
+      sphere({radius:holeTop, segments, 
+              center:headPoint.concat(0)}),
+      sphere({radius:holeBot, segments, 
+              center: [x,y,-holeLen]})));
+  }
+}
+
+// flat-head M3 bolt
+const fhBolt_M3 = (length) => {
+  const plasticOfs  = 0.3
+  const topRadius   = 6/2  + plasticOfs;
+  const shaftRadius = 3/2  + plasticOfs;
+  const topH        = 1.86 + plasticOfs;
+  const zOfs        = -topH/2;
+  const cylH        = length - topH + 1; // 1mm excess
+  const cylZofs     = -cylH/2 - topH;
+  const top = translateZ(zOfs, cylinderElliptic(
+                {startRadius:[shaftRadius, shaftRadius], 
+                  endRadius:[topRadius,topRadius],
+                  height:topH}));
+  const shaft = translateZ(cylZofs, cylinder(
+                  {height:cylH, radius:shaftRadius}));
+  return union(top, shaft);
+};
+// check if vertex angle is less than 90 degrees
+// if so then add a hole to each vec at vertex
+// returns true (& no holes) if 180 degree vertex angle
+// which will cause vec2 to be deleted
+const chkSharpBend = (lastVec, vec) => {
+
+  if(debug) showVec('entering chkSharpBend, lastVec:',lastVec);
+  if(debug) showVec('                        vec:',vec);
+  const [p1, p2] = lastVec;
+  const  p3      = vec[1];
+  if(debug) console.log('entering chkSharpBend', 
+    {p1x:p1[0],p1y:p1[1],p2x:p2[0],p2y:p2[1],p3x:p3[0],p3y:p3[1]});
+
+  // translate p1 and p3 to p2
+  let [[x1,y1], [x2,y2]] = 
+        [[p1[0]-p2[0], p1[1]-p2[1]],
+         [p3[0]-p2[0], p3[1]-p2[1]]];
+  if(debug) console.log('checking bend angle', {y1,x1,y2,x2,
+     p1x:p1[0],p1y:p1[1],p2x:p2[0],p2y:p2[1],p3x:p3[0],p3y:p3[1]});
+  if((x1 == 0) && (x2 == 0)) {
+    // each vector pointing directly up or down
+    // return true if 180 degree vertex angle
+    // i.e. opposite direction (overlapping)
+    if(debug) showVec('both vectors up or down:',lastVec);
+    if(debug) showVec('                    vec:',vec);
+    return ((y1 > 0) != (y2 > 0));
+  }
+  if((x1 == 0) || (x2 == 0)) {
+    // one vec points up or down
+    // switch x and y which rotates both 90 degrees
+    if(debug) showVec('vec points up or down:',lastVec);
+    if(debug) showVec('                vec:',vec);
+    [x1,y1,x2,y2] = [y1,x1,y2,x2];
+    // now check again
+    if((x1 == 0) || (x2 == 0)) {
+      // they are +-90 degrees apart
+    if(debug) showVec('90 degrees apart:',lastVec);
+    if(debug) showVec('            vec:',vec);
+      if(90 <= MAX_ANGLE) // (yes, 2 constants)
+        // bend ok
+        return false; // not 180 degree vertex angle
+    }
+  }
+  const rad2deg = 360 / (2*Math.PI);
+  const angle1  = Math.atan(y1/x1)* rad2deg
+  const angle2  = Math.atan(y2/x2)* rad2deg;
+  if(debug) console.log('angle calcs', {angle1,angle2});
+  // if(angle1 < 0) angle1 += 360;
+  // if(angle2 < 0) angle2 += 360;
+  const angle = Math.abs(angle2 - angle1);
+  if(debug) console.log('angle', {angle});
+  // const angleCCW = Math.abs(angle1 - angle2);
+  // 180 degree vertex angle?
+  // if so, vec2 will be skipped
+  if(angle == 180) return true; 
+
+  if(angle > MAX_ANGLE) {
+    // bend is too sharp, add holes to both at p2
+    addHole(p1,p2);
+    addHole(p3,p2);
+  }
+  return false;  // not 180 degrees vertex angle
+}
+
 let lastVec = null;
-if(debug) showVec('setting lastVec', lastVec);
 const prevVecs = [];
 
 const chkTooClose = (vec, first) => {
@@ -180,9 +310,19 @@ const chkTooClose = (vec, first) => {
     if(debug) showVec('                            vec', vec);
     const extendingLastVec = lastVec && (ptEq(vec[0], lastVec[1]));
     if(extendingLastVec) {
-      if(debug) console.log('vec is extending last, skipping tail check');
+      if(debug) console.log('vec is extending last');
+      // if bend too sharp, add holes to both vecs
+      if(chkSharpBend(lastVec, vec)) {
+        // vecs point opposite direction (overlapping)
+        if(debug) showVec('bending back on itself:',lastVec);
+        if(debug) showVec('                  vec:',vec);
+        return { // skip vec2
+          headClose:true, tailClose:true, 
+          vec1:null, vec2: null};
+      }
     }
     else {
+      if(debug) console.log('vec is not extending last');
       if(ptTouchesEnd(vec[0],prevVec)) {
         // vec tail is touching prevVec head or tail
         if(debug)  showVec('tail touches prev', prevVec);
@@ -288,53 +428,6 @@ const chkTooClose = (vec, first) => {
   return {headClose:false, tailClose:false, vec1: null, vec2: null};
 }
 
-const hullChains = [];
-let   spherePts  = [];
-
-const addToHullChains = () => {
-  if(spherePts.length) {
-    const spheres = spherePts.map((pt) =>
-      sphere({radius, segments, center: pt.concat(0)}));
-    hullChains.push(hullChain(...spheres));
-  }
-}
-
-const addHull = (vec) => {
-  showVec(' - hull', vec);
-  if(genHulls) {
-    if(spherePts.length && ptEq(spherePts.at(-1), vec[0]))
-      spherePts.push(vec[1]);
-    else {
-      addToHullChains();
-      spherePts = [vec[0], vec[1]];
-    }
-  }
-}
-
-holes = [];
-
-const addHole = (tailPoint, headPoint) => {
-  showVec(' - hole', [tailPoint, headPoint]);
-  if(genHoles) {
-    const w       = headPoint[0] - tailPoint[0];
-    const h       = headPoint[1] - tailPoint[1];
-    const len     = Math.sqrt(w*w + h*h);
-    let scale   = plateDepth/len;
-    let holeLen = plateDepth*1.414;
-    if(debugScale) {
-      scale   = .1;
-      holeLen = .1;
-    }
-    const x       = headPoint[0] + scale*w;
-    const y       = headPoint[1] + scale*h;
-    holes.push( hull(
-      sphere({radius:holeTop, segments, 
-              center:headPoint.concat(0)}),
-      sphere({radius:holeBot, segments, 
-              center: [x,y,-holeLen]})));
-  }
-}
-
 let lastPoint = null;
 
 // returns next seg idx
@@ -365,11 +458,12 @@ const handlePoint = (point, segIdx, segLast) => {
 
   const {headClose, tailClose, vec1, vec2} = 
                        chkTooClose(vec, (segIdx == 1));
+
   if(headClose || tailClose) { 
     // ---- something was too close
-    if (debug) console.log('====== something was too close ======');
-    if(debug)  showVec('too close result, vec1', vec1);
-    if(debug)  showVec('                  vec2', vec2);
+    if(debug) console.log('====== something was too close ======');
+    if(debug) showVec('too close result, vec1', vec1);
+    if(debug) showVec('                  vec2', vec2);
 
     if(vec1 == null) {
       // ---- both ends too close, skipping vec -----
@@ -394,6 +488,7 @@ const handlePoint = (point, segIdx, segLast) => {
     if(vec2) {
       // had intersection
       // vec was split into vec1 and vec2
+      addHole(vec1[0], vec1[1]);
       // handle vec2 as first in new segment
       // recursive
       lastPoint = vec2[0];
@@ -424,25 +519,6 @@ const handlePoint = (point, segIdx, segLast) => {
   if(debug) showVec('lastVec = vec', lastVec);
   return segIdx + 1; // next segidx
 }
-
-// flat-head M3 bolt
-const fhBolt_M3 = (length) => {
-  const plasticOfs  = 0.3
-  const topRadius   = 6/2  + plasticOfs;
-  const shaftRadius = 3/2  + plasticOfs;
-  const topH        = 1.86 + plasticOfs;
-  const zOfs        = -topH/2;
-  const cylH        = length - topH + 1; // 1mm excess
-  const cylZofs     = -cylH/2 - topH;
-  const top = translateZ(zOfs, cylinderElliptic(
-                {startRadius:[shaftRadius, shaftRadius], 
-                  endRadius:[topRadius,topRadius],
-                  height:topH}));
-  const shaft = translateZ(cylZofs, cylinder(
-                  {height:cylH, radius:shaftRadius}));
-  return union(top, shaft);
-};
-
 
 const getParameterDefinitions = () => {
   console.log('getParameterDefinitions', Object.keys(fonts));
