@@ -6,8 +6,8 @@ const {vectorChar}            = jscad.text;
 const {hull, hullChain}       = jscad.hulls;
 const {translate, translateZ} = jscad.transforms;
 
-const debug      = true;
-const debugScale = true;
+const debug      = false;
+const debugScale = false;
 
 const MAX_ANGLE = 90
 
@@ -221,10 +221,8 @@ const fhBolt_M3 = (length) => {
                   {height:cylH, radius:shaftRadius}));
   return union(top, shaft);
 };
-// check if vertex angle is less than 90 degrees
+// check if vertex angle is greater than 90 degrees
 // if so then add a hole to each vec at vertex
-// returns true (& no holes) if 180 degree vertex angle
-// which will cause vec2 to be deleted
 const chkSharpBend = (lastVec, vec) => {
   if(debug) showVec('entering chkSharpBend, lastVec:',lastVec);
   if(debug) showVec('                          vec:',vec);
@@ -235,26 +233,29 @@ const chkSharpBend = (lastVec, vec) => {
   let [x2,y2] = [p3[0]-p2[0], p3[1]-p2[1]];
   if((x1 == 0) && (x2 == 0)) {
     // each vector pointing directly up or down
-    // return true if 180 degree vertex angle
-    // i.e. opposite direction (backtracing)
     if(debug) showVec('both vectors up or down:',lastVec);
     if(debug) showVec('                    vec:',vec);
-    return ((y1 > 0) != (y2 > 0));
+    if((y1 > 0) != (y2 > 0)) {
+      // bend is 180 degrees, add holes to both vecs at p2
+      addHole(p1,p2);
+      addHole(p3,p2);
+    }
+    return;
   }
   if((x1 == 0) || (x2 == 0)) {
-    // one vec points up or down
+    if(debug) showVec('a vec points up or down:',lastVec);
+    if(debug) showVec('                    vec:',vec);
     // switch x and y which rotates both 90 degrees
-    if(debug) showVec('vec points up or down:',lastVec);
-    if(debug) showVec('                  vec:',vec);
     [x1,y1,x2,y2] = [y1,x1,y2,x2];
     // now check again
     if((x1 == 0) || (x2 == 0)) {
-      // they are +-90 degrees apart
-    if(debug) showVec('90 degrees apart:',lastVec);
-    if(debug) showVec('             vec:',vec);
-      if(90 <= MAX_ANGLE) // (yes, 2 constants)
-        // bend ok
-        return false; // not 180 degree vertex angle
+      if(debug) showVec('90 degrees apart:',lastVec);
+      if(debug) showVec('             vec:',vec);
+      if(90 > MAX_ANGLE) { // (yes, 2 constants)
+        addHole(p1,p2);
+        addHole(p3,p2);
+      }
+      return;
     }
   }
   if(debug) console.log('before angle calc', {x1,y1,x2,y2});
@@ -273,7 +274,7 @@ const chkSharpBend = (lastVec, vec) => {
     addHole(p1,p2);
     addHole(p3,p2);
   }
-  return false;  // not 180 degrees vertex angle
+  return;
 }
 
 let lastVec = null;
@@ -302,16 +303,7 @@ const chkTooClose = (vec, first) => {
     const extendingLastVec = lastVec && (ptEq(vec[0], lastVec[1]));
     if(extendingLastVec) {
       if(debug) console.log('vec is extending last');
-      // if bend too sharp, add holes to both vecs
       chkSharpBend(lastVec, vec);
-      // if(chkSharpBend(lastVec, vec)) {
-      //   // vecs point opposite direction (overlapping)
-      //   if(debug) showVec('bending back on itself:',lastVec);
-      //   if(debug) showVec('                  vec:',vec);
-      //   return { // skip vec2
-      //     headClose:true, tailClose:true, 
-      //     vec1:null, vec2: null};
-      // }
     }
     else {
       if(debug) console.log('vec is not extending last');
