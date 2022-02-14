@@ -6,8 +6,8 @@ const {vectorChar}            = jscad.text;
 const {hull, hullChain}       = jscad.hulls;
 const {translate, translateZ} = jscad.transforms;
 
-const debug      = false;
-const debugScale = false;
+const debug      = true;
+const debugScale = true;
 
 const MAX_ANGLE = 90
 
@@ -192,7 +192,7 @@ const addHole = (tailPoint, headPoint) => {
     let holeLen = plateDepth*1.414;
     if(debugScale) {
       scale   = .1;
-      holeLen = .1;
+      holeLen = .5;
     }
     const x       = headPoint[0] + scale*w;
     const y       = headPoint[1] + scale*h;
@@ -226,24 +226,17 @@ const fhBolt_M3 = (length) => {
 // returns true (& no holes) if 180 degree vertex angle
 // which will cause vec2 to be deleted
 const chkSharpBend = (lastVec, vec) => {
-
   if(debug) showVec('entering chkSharpBend, lastVec:',lastVec);
-  if(debug) showVec('                        vec:',vec);
+  if(debug) showVec('                          vec:',vec);
   const [p1, p2] = lastVec;
   const  p3      = vec[1];
-  if(debug) console.log('entering chkSharpBend', 
-    {p1x:p1[0],p1y:p1[1],p2x:p2[0],p2y:p2[1],p3x:p3[0],p3y:p3[1]});
-
-  // translate p1 and p3 to p2
-  let [[x1,y1], [x2,y2]] = 
-        [[p1[0]-p2[0], p1[1]-p2[1]],
-         [p3[0]-p2[0], p3[1]-p2[1]]];
-  if(debug) console.log('checking bend angle', {y1,x1,y2,x2,
-     p1x:p1[0],p1y:p1[1],p2x:p2[0],p2y:p2[1],p3x:p3[0],p3y:p3[1]});
+  // translate p1 and p3 to origin
+  let [x1,y1] = [p2[0]-p1[0], p2[1]-p1[1]];
+  let [x2,y2] = [p3[0]-p2[0], p3[1]-p2[1]];
   if((x1 == 0) && (x2 == 0)) {
     // each vector pointing directly up or down
     // return true if 180 degree vertex angle
-    // i.e. opposite direction (overlapping)
+    // i.e. opposite direction (backtracing)
     if(debug) showVec('both vectors up or down:',lastVec);
     if(debug) showVec('                    vec:',vec);
     return ((y1 > 0) != (y2 > 0));
@@ -252,31 +245,29 @@ const chkSharpBend = (lastVec, vec) => {
     // one vec points up or down
     // switch x and y which rotates both 90 degrees
     if(debug) showVec('vec points up or down:',lastVec);
-    if(debug) showVec('                vec:',vec);
+    if(debug) showVec('                  vec:',vec);
     [x1,y1,x2,y2] = [y1,x1,y2,x2];
     // now check again
     if((x1 == 0) || (x2 == 0)) {
       // they are +-90 degrees apart
     if(debug) showVec('90 degrees apart:',lastVec);
-    if(debug) showVec('            vec:',vec);
+    if(debug) showVec('             vec:',vec);
       if(90 <= MAX_ANGLE) // (yes, 2 constants)
         // bend ok
         return false; // not 180 degree vertex angle
     }
   }
+  if(debug) console.log('before angle calc', {x1,y1,x2,y2});
   const rad2deg = 360 / (2*Math.PI);
-  const angle1  = Math.atan(y1/x1)* rad2deg
-  const angle2  = Math.atan(y2/x2)* rad2deg;
-  if(debug) console.log('angle calcs', {angle1,angle2});
+  let   angle1  = Math.atan(y1/x1)* rad2deg
+  let   angle2  = Math.atan(y2/x2)* rad2deg;
+  if(x1 < 0) angle1 += 180;
+  if(x2 < 0) angle2 += 180;
+  if(debug) console.log('angle calc result', {angle1,angle2});
   // if(angle1 < 0) angle1 += 360;
   // if(angle2 < 0) angle2 += 360;
   const angle = Math.abs(angle2 - angle1);
   if(debug) console.log('angle', {angle});
-  // const angleCCW = Math.abs(angle1 - angle2);
-  // 180 degree vertex angle?
-  // if so, vec2 will be skipped
-  if(angle == 180) return true; 
-
   if(angle > MAX_ANGLE) {
     // bend is too sharp, add holes to both at p2
     addHole(p1,p2);
@@ -312,14 +303,15 @@ const chkTooClose = (vec, first) => {
     if(extendingLastVec) {
       if(debug) console.log('vec is extending last');
       // if bend too sharp, add holes to both vecs
-      if(chkSharpBend(lastVec, vec)) {
-        // vecs point opposite direction (overlapping)
-        if(debug) showVec('bending back on itself:',lastVec);
-        if(debug) showVec('                  vec:',vec);
-        return { // skip vec2
-          headClose:true, tailClose:true, 
-          vec1:null, vec2: null};
-      }
+      chkSharpBend(lastVec, vec);
+      // if(chkSharpBend(lastVec, vec)) {
+      //   // vecs point opposite direction (overlapping)
+      //   if(debug) showVec('bending back on itself:',lastVec);
+      //   if(debug) showVec('                  vec:',vec);
+      //   return { // skip vec2
+      //     headClose:true, tailClose:true, 
+      //     vec1:null, vec2: null};
+      // }
     }
     else {
       if(debug) console.log('vec is not extending last');
@@ -431,33 +423,23 @@ const chkTooClose = (vec, first) => {
 let lastPoint = null;
 
 // returns next seg idx
-const handlePoint = (point, segIdx, segLast) => {
-  if(segIdx == 0) {
+const handlePoint = (point, ptIdx, lastPtInSeg) => {
+  if(ptIdx == 0) {
     // first point of segment
     if (debug) console.log('first point of segment', 
                   point[0].toFixed(1), point[1].toFixed(1));
     lastPoint = point;
     lastVec   = null;
     if(debug) showVec('setting lastVec', lastVec);
-    return 1; // next segidx is 1
+    return 1; // next ptIdx is 1
   }
   // not first point
   let vec = [lastPoint, point];
-  console.log('\n-- handlePoint segIdx: '+segIdx+', segLast: '+segLast);
-  showVec(    '\n-- vec:', vec);
-
-  // if(lastVec && ptEq(vec[0],lastVec[1]) && ptEq(vec[1],lastVec[0])) {
-  //   // vec is reverse of last vec
-  //   // these fonts go back over path a second time
-  //   // we can ignore all remaining points/vecs in this segment
-  //   console.log("\npath is reversing -- ignore rest of segment\n");
-  //   if(debug) showVec('add last hole to lastVec', lastVec);
-  //     addHole(lastVec[0], lastVec[1]);
-  //   return null;
-  // }
+  console.log('\n-- handlePoint', {ptIdx, lastPtInSeg});
+  showVec(      '-- vec:', vec);
 
   const {headClose, tailClose, vec1, vec2} = 
-                       chkTooClose(vec, (segIdx == 1));
+                       chkTooClose(vec, (ptIdx == 1));
 
   if(headClose || tailClose) { 
     // ---- something was too close
@@ -474,11 +456,11 @@ const handlePoint = (point, segIdx, segLast) => {
         if(debug) showVec('add last hole to lastVec', lastVec);
         addHole(lastVec[0], lastVec[1]);
       }
-      return 0; // next segidx is 0
+      return 0; // next ptIdx is 0
     }
 
     // ---- an end was too close
-    if(segIdx == 1 || tailClose) 
+    if(ptIdx == 1 || tailClose) 
       addHole(point, vec1[0]); // add first hole
     addHull(vec1);
     if(debug) showVec('adding to prevVecs vec1', vec1);
@@ -489,35 +471,36 @@ const handlePoint = (point, segIdx, segLast) => {
       // had intersection
       // vec was split into vec1 and vec2
       addHole(vec1[0], vec1[1]);
+
       // handle vec2 as first in new segment
-      // recursive
+      if(debug) console.log('before recursive call to handlePoint');
       lastPoint = vec2[0];
-      handlePoint(vec2[1], 1, segLast);
+      // next ptIdx is 1, lastPtInSeg is still correct
+      handlePoint(vec2[1], 1, lastPtInSeg);
+      if(debug) console.log('after recursive call to handlePoint');
+
       lastVec = vec2;
       if(debug) showVec('(intersection) lastVec:', lastVec);
-      if(!segLast) return 2;  // next segidx is 2
+      if(!lastPtInSeg) return 2;  // next ptIdx is 2
     }
-    if(debug) {
-      showVec('checking last hole',vec1);
-      console.log({segLast, headClose});
-    } 
-    if(segLast || headClose) 
+    if(debug) console.log('checking last hole', {lastPtInSeg, headClose});
+    if(lastPtInSeg || headClose) 
       addHole(vec1[0], vec1[1]); // add last hole
     lastPoint = vec[1];
-    return segIdx + 1; // next segidx
+    return ptIdx + 1; // next ptIdx
   }
 
   // ---- point was not too close
   if(debug) showVec('  -- not too close', vec);
-  if(segIdx == 1) addHole(point, lastPoint); // add first hole
+  if(ptIdx == 1) addHole(point, lastPoint); // add first hole
   addHull(vec);
-  if(segLast) addHole(lastPoint, point); // add last hole
+  if(lastPtInSeg) addHole(lastPoint, point); // add last hole
   if(debug)  showVec('adding to prevVecs vec', vec);
   prevVecs.push(vec);
   lastPoint = point;
   lastVec   = vec;
   if(debug) showVec('lastVec = vec', lastVec);
-  return segIdx + 1; // next segidx
+  return ptIdx + 1; // next ptIdx
 }
 
 const getParameterDefinitions = () => {
@@ -588,21 +571,22 @@ const main = (params) => {
     yOfs      = 0
   }
 
-  strWidth  = 0;
+  let xOffset = 0;
   for(const char of text) {
-    const charRes = vectorChar({font, xOffset:strWidth}, char);
-    const {width, segments:segs} = charRes;
+    const charRes = vectorChar({font, xOffset}, char);
+    let {width, segments} = charRes;
     console.log("\n======== CHAR: " + char + 
-                 ', segment count:', segs.length);
-    strWidth  += width;
-    segs.forEach( seg => {
+                 ', segment count:', segments.length);
+    xOffset += width;
+    segments.forEach( seg => {
       console.log("\n--- seg ---, point count: ", seg.length);
+      let ptIdx  = 0;
       let segIdx = 0;
       seg.every( point => {
         point[0] *= textScale;
         point[1] *= textScale;
-        segIdx = handlePoint(point, segIdx, segIdx == seg.length-1);
-        return (segIdx != null);  // if null, break from both loops
+        ptIdx = handlePoint(point, ptIdx, ++segIdx == seg.length);
+        return (segIdx != null);
       });
     });
   };
