@@ -14,9 +14,6 @@
 
 // globals
 u8  brightness  = DEFAULT_BRIGHTNESS;
-// todo - measure this
-u16 upperThresh = 600;
-u16 lowerThresh = 400;
 
 // convert brightness to 16-bit factor
 u16 brightnessFactor(void) {
@@ -43,25 +40,21 @@ void setLedCurrentTgt() {
   static bool nightLightLedOff = false;
 
   if(nightLightMode) {
-    if(!nightLightLedOff && 
-      lightSens > upperThresh) {
+    if(!nightLightLedOff && lightSens > 
+          (nightlightThresh + THRESHOLD_HIST))
       nightLightLedOff = true;
-    }
-    if(nightLightMode    && 
-        nightLightLedOff && 
-        lightSens < lowerThresh) {
+    if(nightLightLedOff && lightSens < 
+          (nightlightThresh - THRESHOLD_HIST))
       nightLightLedOff = false;
-    }
     if(nightLightLedOff) {
       ledCurrentTgt = 0;
       return;
     }
   }
-  else {
+  else
     nightLightLedOff = false;
-  }
-  
-  // led not forced off by nightLight
+
+  // led not forced off by nightLightLedOff
   if(brightness == 0) {
     ledCurrentTgt = 0;
     return;

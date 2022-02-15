@@ -11,7 +11,10 @@
 #define MAX_BRIGHTNESS     14  // 128 ma
 #define DEFAULT_BRIGHTNESS 10  //  32 ma
 
-#define MAX_THRESHOLD 512   // max nightlight adc value
+#define THRESH_INC      10  // threshold change on knob turn
+#define MAX_THRESHOLD  512  // max nightlight adc value
+#define MIN_THRESHOLD  512  // min nightlight adc value
+#define THRESHOLD_HIST  50  // nightlight hysterises
 
 #define MAX_PWM       1024  // TODO -- measure for 50 ma
 #define MAX_CURRENT 0xffff  // TODO -- measure for 50 ma
@@ -21,8 +24,6 @@
 
 // simple indexes
 extern u8  brightness; 
-extern u16 upperThresh;
-extern u16 lowerThresh;
 
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);

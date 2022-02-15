@@ -6,9 +6,12 @@
 #include "led.h"
 
 // global
-u8 nightLightMode = 0;
+bool nightLightMode = false;
 
-// set pwron gpio pin to zero
+// todo - measure this
+u16 nightlightThresh = 500;
+
+// set pwron gpio pin low
 // this turns off 3.3v power to mcu
 // this never returns;
 void powerDown() {
@@ -21,13 +24,13 @@ u8 clickCount = 0;
 void clickTimeout(void) {
   if(clickCount == 1) powerDown();  
   else if(clickCount >= 2) {
-    if(nightLightMode == modeNormal) {
-        nightLightMode = modeNightLight;
+    if(nightLightMode) {
+        nightLightMode = true;
         setEepromByte(eeprom_mode_adr, nightLightMode);
         flash(nightLightMode);
     }
     else {
-        nightLightMode = modeNormal;
+        nightLightMode = false;
         setEepromByte(eeprom_mode_adr, nightLightMode);
         flash(nightLightMode);
     }
@@ -47,18 +50,11 @@ void adjBrightness(bool cw) {
 }
 
 void adjNightLightThreshold(bool cw) {
-
-  //  upperThresh
-  //  lowerThresh
-
-  // if( cw && nightLightThresh < MAX_THRESHOLD) {
-  //   nightLightThresh++;
-  //   setEepromByte(eeprom_brightness_adr, brightness);
-  // }
-  // if(!cw && nightLightThresh > 0) {
-  //   brightness--;
-  //   setEepromByte(eeprom_brightness_adr, brightness);
-  // }
+  // turning up threshold makes led turn on
+  if( cw && nightlightThresh < MAX_THRESHOLD) 
+      nightlightThresh += THRESH_INC;
+  if(!cw && nightlightThresh > MIN_THRESHOLD) 
+      nightlightThresh -= THRESH_INC;
 }
 
 u16 lastClickTime = 0;
@@ -110,15 +106,13 @@ u16 lastBtnActivity = 0;
 
   if(!encaWaitDebounce) {
     if(button_lvl) {
-      // turning knob while pressed
-      // setting nightlight ambian light threshold
-      if(encb_lvl) adjBrightness(true);
-      else         adjBrightness(false);
+      // turning knob while knob pressed
+      // sets nightlight light threshold
+      adjNightLightThreshold(encb_lvl);
     }
     else {
       // turning knob while not pressed
-      if(encb_lvl) adjBrightness(true);
-      else         adjBrightness(false);
+      adjBrightness(encb_lvl);
     }
     lastEncaActivity = now;
     encaWaitDebounce = true;

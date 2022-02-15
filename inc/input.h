@@ -11,7 +11,8 @@ enum {
   modeAdjust
 };
 
-extern u8 nightLightMode;
+extern bool nightLightMode;
+extern u16  nightlightThresh;
 
 // interrupts every button or encoder pin change (ports C and D)
 @far @interrupt void buttonIntHandler(void);   // irq6
