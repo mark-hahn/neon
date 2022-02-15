@@ -5,10 +5,8 @@
 #include "input.h"
 #include "led.h"
 
-#define EEPROM_CHK_BYTE 0x5a
-
 // global
-u8 mode = 0;
+u8 nightLightMode = 0;
 
 // set pwron gpio pin to zero
 // this turns off 3.3v power to mcu
@@ -23,24 +21,15 @@ u8 clickCount = 0;
 void clickTimeout(void) {
   if(clickCount == 1) powerDown();  
   else if(clickCount >= 2) {
-    switch(mode) {
-      case modeNormal:     
-        mode = modeNightLight;
-        setEepromByte(eeprom_mode_adr, mode);
-        flash(mode);
-        break;
-
-      case modeNightLight: 
-        mode = modeAdjust;
-        setEepromByte(eeprom_mode_adr, mode);
-        flash(mode);
-        break;
-
-      case modeAdjust: 
-        mode = modeNormal;   
-        setEepromByte(eeprom_mode_adr, mode);
-        flash(mode);
-        break;
+    if(nightLightMode == modeNormal) {
+        nightLightMode = modeNightLight;
+        setEepromByte(eeprom_mode_adr, nightLightMode);
+        flash(nightLightMode);
+    }
+    else {
+        nightLightMode = modeNormal;
+        setEepromByte(eeprom_mode_adr, nightLightMode);
+        flash(nightLightMode);
     }
   }
   clickCount = 0;
@@ -55,6 +44,21 @@ void adjBrightness(bool cw) {
     brightness--;
     setEepromByte(eeprom_brightness_adr, brightness);
   }
+}
+
+void adjNightLightThreshold(bool cw) {
+
+  //  upperThresh
+  //  lowerThresh
+
+  // if( cw && nightLightThresh < MAX_THRESHOLD) {
+  //   nightLightThresh++;
+  //   setEepromByte(eeprom_brightness_adr, brightness);
+  // }
+  // if(!cw && nightLightThresh > 0) {
+  //   brightness--;
+  //   setEepromByte(eeprom_brightness_adr, brightness);
+  // }
 }
 
 u16 lastClickTime = 0;
@@ -105,8 +109,17 @@ u16 lastBtnActivity = 0;
     encaWaitDebounce = false;
 
   if(!encaWaitDebounce) {
-    if(encb_lvl) adjBrightness(true);
-    else         adjBrightness(false);
+    if(button_lvl) {
+      // turning knob while pressed
+      // setting nightlight ambian light threshold
+      if(encb_lvl) adjBrightness(true);
+      else         adjBrightness(false);
+    }
+    else {
+      // turning knob while not pressed
+      if(encb_lvl) adjBrightness(true);
+      else         adjBrightness(false);
+    }
     lastEncaActivity = now;
     encaWaitDebounce = true;
   }
@@ -138,7 +151,7 @@ void inputLoop(void) {
   u16 now = millis();
 
   if(justPoweredOn) {
-    flash(mode);
+    flash(nightLightMode);
     justPoweredOn = false;
   }
 

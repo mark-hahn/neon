@@ -32,10 +32,10 @@ void main(void) {
   while(true)  ;  // debug, cpu always running
 }
 
-#define DBG_BUF_SIZE 256
-u8 @near dbgBuf[DBG_BUF_SIZE];
-u16 dbgBufIdx = 0;
-void trace(u8 byte) {
-  dbgBuf[dbgBufIdx++] = byte;
-  if(dbgBufIdx == DBG_BUF_SIZE) dbgBufIdx = 0;
-}
+// #define DBG_BUF_SIZE 256
+// u8 @near dbgBuf[DBG_BUF_SIZE];
+// u16 dbgBufIdx = 0;
+// void trace(u8 byte) {
+//   dbgBuf[dbgBufIdx++] = byte;
+//   if(dbgBufIdx == DBG_BUF_SIZE) dbgBufIdx = 0;
+// }

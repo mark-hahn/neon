@@ -13,7 +13,10 @@
 #define LED_PWM_H TIM2->CCR2H
 
 // globals
-u8  brightness = DEFAULT_BRIGHTNESS;
+u8  brightness  = DEFAULT_BRIGHTNESS;
+// todo - measure this
+u16 upperThresh = 600;
+u16 lowerThresh = 400;
 
 // convert brightness to 16-bit factor
 u16 brightnessFactor(void) {
@@ -37,6 +40,28 @@ u16 ledCurrentTgt = 0;
 
 // sets desired led current based on brightness
 void setLedCurrentTgt() {
+  static bool nightLightLedOff = false;
+
+  if(nightLightMode) {
+    if(!nightLightLedOff && 
+      lightSens > upperThresh) {
+      nightLightLedOff = true;
+    }
+    if(nightLightMode    && 
+        nightLightLedOff && 
+        lightSens < lowerThresh) {
+      nightLightLedOff = false;
+    }
+    if(nightLightLedOff) {
+      ledCurrentTgt = 0;
+      return;
+    }
+  }
+  else {
+    nightLightLedOff = false;
+  }
+  
+  // led not forced off by nightLight
   if(brightness == 0) {
     ledCurrentTgt = 0;
     return;
@@ -46,14 +71,13 @@ void setLedCurrentTgt() {
     return;
   }
 
-
-
   // brightness (0..7)  is 2^^(brightness-1) ma,  1/2, 1, .. 64 ma
   if((brightness-1) >= 0)
 
 
 
   if(ledCurrentTgt > MAX_CURRENT) ledCurrentTgt = MAX_CURRENT;
+  }
 }
 
 // calls handleAdcInt to get led current

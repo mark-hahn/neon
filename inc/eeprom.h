@@ -7,8 +7,9 @@
 // eeprom addresses
 enum {
   eeprom_chk_adr,
+  eeprom_mode_adr,
   eeprom_brightness_adr,
-  eeprom_mode_adr
+  eeprom_threshold_adr
 };
 
 // addr is 0 to 639
