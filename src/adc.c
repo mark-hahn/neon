@@ -78,12 +78,11 @@ void initAdc(void) {
 // alternating get light or battery reading
 // every 100 ms
 #define ADC_INTERVAL_MS 100
-
 // called from timer int in led.c
 // returns led current in adc count
 // sort of like a main loop
 u16 handleAdcInt(void) {
-  statuc u16 batteryAdc  = 0;
+  static u16 batteryAdc  = 0;
   static u16 lastAdcTime = 0;
 
   u16 ledAdc;

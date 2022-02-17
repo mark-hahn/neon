@@ -41,7 +41,7 @@ void adjBrightness(bool cw) {
 
 void adjNightLightThreshold(bool cw) {
   // turning up threshold makes led turn on
-  if( cw && nightlightThresh < MAX_NIGHTLIGHT_THRESHOLD) {
+  if( cw && nightlightThresh < MAX_NIGHTLIGHT_THRESHOLD)
       nightlightThresh += NIGHTLIGHT_THRESHOLD_INC;
   if(!cw && nightlightThresh > MIN_NIGHTLIGHT_THRESHOLD) 
       nightlightThresh -= NIGHTLIGHT_THRESHOLD_INC;

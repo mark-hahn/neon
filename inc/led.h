@@ -15,7 +15,7 @@
 u16 millis(void);
 
 // flash led count+1 times
-void flash(count);
+void flash(u8 count);
 
 @far @interrupt void tim2IntHandler();
 

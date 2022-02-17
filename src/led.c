@@ -45,7 +45,7 @@ u16  lastFlashActionMs = 0;
 u8   flashes_remaining = 0;
 
 // flash led count+1 times
-void flash(count) {
+void flash(u8 count) {
   flashState        = flash_active;
   lastFlashActionMs = millis();
   flashes_remaining = count+1;
@@ -118,6 +118,7 @@ void adjustPwm(void) {
     else                  pwmVal  = 0;
     set16(LED_PWM_, pwmVal);
   }
+}
 
 // timer interrupts every 64 usecs
 @far @interrupt void tim2IntHandler() {
