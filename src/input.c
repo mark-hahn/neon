@@ -21,7 +21,8 @@ void powerDown() {
 u8 clickCount = 0;
 
 void clickTimeout(void) {
-  if(clickCount == 1) powerDown();  
+  if(clickCount == 1) 
+    powerDown();  
   else if(clickCount >= 2) {
     nightLightMode = !nightLightMode;
     setEepromByte(eeprom_mode_adr, nightLightMode);
