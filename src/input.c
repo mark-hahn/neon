@@ -25,8 +25,8 @@ void clickTimeout(void) {
     powerDown();  
   else if(clickCount >= 2) {
     nightLightMode = !nightLightMode;
-    setEepromByte(eeprom_mode_adr, nightLightMode);
     flash(nightLightMode);
+    setEepromByte(eeprom_mode_adr, nightLightMode);
   }
   clickCount = 0;
 }

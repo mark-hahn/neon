@@ -14,6 +14,9 @@
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);
 
+// flash led count+1 times
+void flash(count);
+
 @far @interrupt void tim2IntHandler();
 
 void setLedAdcTgt(void);

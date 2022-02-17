@@ -32,12 +32,52 @@ const u16 expTable[33] = {0x0000,
 
 u16 ledAdcTgt = 0;
 
+#define FLASH_DURATION_MS 300
+
+enum {
+  not_flashing,
+  flash_active,
+  flash_pausing
+};
+
+bool flashState = not_flashing;
+u16  lastFlashActionMs = 0;
+u8   flashes_remaining = 0;
+
+// flash led count+1 times
+void flash(count) {
+  flashState        = flash_active;
+  lastFlashActionMs = millis();
+  flashes_remaining = count+1;
+}
+
 // calc led adc value based on batv and brightness
 // see end of file for calculations
 // brightness ==  1 => 1.5 ma
 // brightness == 14 => 159 ma
 void setLedAdcTgt(void) {
   static bool offDueToLight = false;
+  u16 now = millis();
+
+  if(flashState == flash_active) {
+    ledAdcTgt = MAX_LED_ADC_TGT;
+    if ((now - lastFlashActionMs) > FLASH_DURATION_MS) {
+      lastFlashActionMs = now;
+      flashState = flash_pausing;
+    }
+    return;
+  }
+  if(flashState == flash_pausing) {
+    ledAdcTgt = 0;;
+    if ((now - lastFlashActionMs) > FLASH_DURATION_MS) {
+      lastFlashActionMs = now;
+      if(--flashes_remaining == 0)
+           flashState = not_flashing;
+      else flashState = flash_active;
+    }
+    return;
+  }
+
   if(nightLightMode) {
     if(offDueToLight && 
          lightAdc > (nightlightThresh + THRESHOLD_HIST)){
