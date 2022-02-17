@@ -5,13 +5,12 @@
 #include "main.h"
 
 // ambient light (photo-resistor)
-// meaningless units
-extern u16 lightSens; 
-
+extern u16 lightAdc; 
+extern u16 batteryAdc;
 void initAdc(void);
 
 // called from timer int in led.c
-// returns led current, no meaningful units
+// returns led current adc
 u16 handleAdcInt(void);
  
 #endif

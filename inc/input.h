@@ -4,6 +4,14 @@
 #include "stm8s.h"
 #include "main.h"
 
+// brightness (0..16) (could probably be bigger)
+#define MAX_BRIGHTNESS     14  // 231 ma
+#define DEFAULT_BRIGHTNESS 12  // 115 ma
+
+// todo -- measure this
+#define MAX_NIGHTLIGHT_THRESHOLD 200
+#define DEF_NIGHTLIGHT_THRESHOLD 100  
+
 // operation modes
 enum {
   modeNormal,
@@ -12,7 +20,8 @@ enum {
 };
 
 extern bool nightLightMode;
-extern u16  nightlightThresh;
+extern u8   nightlightThresh;
+extern u8   brightness;  // 0-16, 16 => 140 ma
 
 // interrupts every button or encoder pin change (ports C and D)
 @far @interrupt void buttonIntHandler(void);   // irq6

@@ -6,10 +6,9 @@
 #include "led.h"
 
 // global
-bool nightLightMode = false;
-
-// todo - measure this
-u16 nightlightThresh = 500;
+bool nightLightMode   = false;
+u8   nightlightThresh = DEF_NIGHTLIGHT_THRESHOLD; 
+u8   brightness       = DEFAULT_BRIGHTNESS;
 
 // set pwron gpio pin low
 // this turns off 3.3v power to mcu
@@ -24,37 +23,28 @@ u8 clickCount = 0;
 void clickTimeout(void) {
   if(clickCount == 1) powerDown();  
   else if(clickCount >= 2) {
-    if(nightLightMode) {
-        nightLightMode = true;
-        setEepromByte(eeprom_mode_adr, nightLightMode);
-        flash(nightLightMode);
-    }
-    else {
-        nightLightMode = false;
-        setEepromByte(eeprom_mode_adr, nightLightMode);
-        flash(nightLightMode);
-    }
+    nightLightMode = !nightLightMode;
+    setEepromByte(eeprom_mode_adr, nightLightMode);
+    flash(nightLightMode);
   }
   clickCount = 0;
 }
 
 void adjBrightness(bool cw) {
-  if( cw && brightness < MAX_BRIGHTNESS) {
+  if( cw && brightness < MAX_BRIGHTNESS)
     brightness++;
-    setEepromByte(eeprom_brightness_adr, brightness);
-  }
-  if(!cw && brightness > 0) {
+  if(!cw && brightness > 0)
     brightness--;
-    setEepromByte(eeprom_brightness_adr, brightness);
-  }
+  setEepromByte(eeprom_brightness_adr, brightness);
 }
 
 void adjNightLightThreshold(bool cw) {
   // turning up threshold makes led turn on
-  if( cw && nightlightThresh < MAX_THRESHOLD) 
-      nightlightThresh += THRESH_INC;
-  if(!cw && nightlightThresh > MIN_THRESHOLD) 
-      nightlightThresh -= THRESH_INC;
+  if( cw && nightlightThresh < MAX_NIGHTLIGHT_THRESHOLD) {
+      nightlightThresh++;
+  if(!cw && nightlightThresh > 0) 
+      nightlightThresh--;
+  setEepromByte(eeprom_threshold_adr, nightlightThresh);
 }
 
 u16 lastClickTime = 0;
@@ -64,7 +54,6 @@ volatile u16 buttonPressCount = 0; // debug
 void buttonPress(void) {
   lastClickTime = millis();
   clickCount++;
-
   buttonPressCount++; // debug
 }
 
@@ -91,31 +80,32 @@ u16 lastBtnActivity = 0;
 
 // irq5 interrupt, either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
-  static bool lastEncHigh      = true;
-  static bool encaWaitDebounce = false;
-  static u16  lastEncaActivity = 0;
+  static bool lastEncAHigh     = true;
+  static bool encAWaitDebounce = false;
+  static u16  lastEncAActivity = 0;
 
   u16 now = millis();
-  bool encHigh = (enca_lvl != 0);
 
-  if(!encHigh || lastEncHigh) return;  // not A rising
-  lastEncHigh = encHigh;
+  bool EncAHigh = (enca_lvl != 0);
+  if(!(EncAHigh && !lastEncAHigh)) return;  // not A rising
+  lastEncAHigh = EncAHigh;
 
-  if(encaWaitDebounce && ((now - lastEncaActivity) > DEBOUNCE_DELAY_MS))
-    encaWaitDebounce = false;
+  if(encAWaitDebounce && 
+      ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
+    encAWaitDebounce = false;
 
-  if(!encaWaitDebounce) {
+  if(!encAWaitDebounce) {
     if(button_lvl) {
       // turning knob while knob pressed
-      // sets nightlight light threshold
+      // set nightlight light threshold
       adjNightLightThreshold(encb_lvl);
     }
     else {
       // turning knob while not pressed
       adjBrightness(encb_lvl);
     }
-    lastEncaActivity = now;
-    encaWaitDebounce = true;
+    lastEncAActivity = now;
+    encAWaitDebounce = true;
   }
 }
 

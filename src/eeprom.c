@@ -29,12 +29,14 @@ u8 getEepromByte(u16 addr) {
 
 void initEeprom(void) {
   if(getEepromByte(eeprom_chk_adr) != EEPROM_CHK_BYTE) {
+    setEepromByte(eeprom_chk_adr,         EEPROM_CHK_BYTE);
     setEepromByte(eeprom_mode_adr,        nightLightMode);
     setEepromByte(eeprom_brightness_adr,  brightness);
-    setEepromByte(eeprom_chk_adr,         EEPROM_CHK_BYTE);
+    setEepromByte(eeprom_threshold_adr,   nightlightThresh);
   }
   else {
-    nightLightMode = getEepromByte(eeprom_mode_adr);
-    brightness     = getEepromByte(eeprom_brightness_adr);
+    nightLightMode   = getEepromByte(eeprom_mode_adr);
+    brightness       = getEepromByte(eeprom_brightness_adr);
+    nightlightThresh = getEepromByte(eeprom_threshold_adr);
   }
 }

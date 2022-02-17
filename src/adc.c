@@ -8,17 +8,18 @@
 
 #define CH_MASK   0x0f  // in ADC1->CSR
 
-#define BSENS_CH     2
-#define CURSENS_CH   4
-#define LGTSENS_CH   5
+#define BAT_ADC_CHAN     2
+#define LED_ADC_CHAN   4
+#define LIGHT_ADC_CHAN   5
 
-u16 lightSens = 0x0200;  // global, set in handleAdcInt
+u16 lightAdc   = 170;
+u16 batteryAdc = 170;
 
  // channel being converted
-u8 curAdcChan = BSENS_CH;
+u8 curAdcChan = BAT_ADC_CHAN;
 
 void startAdc(u8 chan) {
-  if(chan != CURSENS_CH) curAdcChan = chan;
+  if(chan != LED_ADC_CHAN) curAdcChan = chan;
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
   ADC1->CR1 |= ADC1_CR1_ADON; // start conversion
 }
@@ -62,34 +63,35 @@ void initAdc(void) {
     // ADC1_CR3_OVR     ((uint8_t)0x40) /*!< Overrun Status Flag mask
 
   // batterySens must be first, used immediately
-  startAdc(BSENS_CH); 
+  startAdc(BAT_ADC_CHAN); 
 }
 
 // this protects the battery from under voltage
 // note that the adc reading goes up as voltage goes down
-// TODO -- measure this
-#define BAT_UNDER_VOLTAGE_THRES 1023 
+// 3v => 0.7 / (3/1024) => 240
+#define BAT_UNDER_VOLTAGE_THRES 239
 
 // called from timer int in led.c
-// returns led current, no meaningful units
+// returns led current in adc count
 // sort of like a main loop
 u16 handleAdcInt(void) {
-  static u16 batteryAdc = 0x0200;
-  u16 current;
+  u16 ledAdc;
 
-  // wait for previous BSENS_CH or LGTSENS_CH conversion
-  if(curAdcChan == BSENS_CH) batteryAdc = waitForAdc(); 
-  else                       lightSens  = waitForAdc(); 
+  // wait for previous battery or light conversion
+  if(curAdcChan == BAT_ADC_CHAN) {
+    batteryAdc = waitForAdc(); 
+    // battery under-voltage protection
+    if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
+    setLedAdcTgt();
+  }
+  else lightAdc = waitForAdc(); 
 
-  if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
-
-  // current is cursens adc adjusted for battery voltage
-  startAdc(CURSENS_CH);
-  current = waitForAdc() * ((u16) 0xffff / batteryAdc) / BAT_FACTOR;
+  startAdc(LED_ADC_CHAN);
+  ledAdc = waitForAdc();
 
   // start next conversion to run between interrupts;
-  if(curAdcChan == BSENS_CH) startAdc(LGTSENS_CH); 
-  else                       startAdc(BSENS_CH); 
+  if(curAdcChan == BAT_ADC_CHAN) startAdc(LIGHT_ADC_CHAN); 
+  else                           startAdc(BAT_ADC_CHAN); 
 
-  return current;
+  return ledAdc;
 }

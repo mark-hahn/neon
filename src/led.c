@@ -12,14 +12,6 @@
 #define LED_PWM_L TIM2->CCR2L
 #define LED_PWM_H TIM2->CCR2H
 
-// globals
-u8  brightness  = DEFAULT_BRIGHTNESS;
-
-// convert brightness to 16-bit factor
-u16 brightnessFactor(void) {
-
-}
-
 volatile u16 msCounter;
 
 // returns elapsed ms, rolls over every 65 secs
@@ -31,65 +23,77 @@ u16 millis(void) {
   return ms;
 }
 
-u16 ledCurrentTgt = 0;
+// 2**(idx/2)  (except for idx == 0 && idx == 32)
+const u16 expTable[33] = {0x0000,
+  0x0001, 0x0002, 0x0003, 0x0004, 0x0006, 0x0008, 0x000b, 0x0010, 
+  0x0017, 0x0020, 0x002d, 0x0040, 0x005b, 0x0080, 0x00b5, 0x0100, 
+  0x016a, 0x0200, 0x02d4, 0x0400, 0x05a8, 0x0800, 0x0b50, 0x1000, 
+  0x16a1, 0x2000, 0x2d41, 0x4000, 0x5a82, 0x8000, 0xb505, 0xffff};
 
-#define PWM_COUNT_PER_MA 2  // TODO -- guess, measure this
+u16 ledAdcTgt = 0;
 
-// sets desired led current based on brightness
-void setLedCurrentTgt() {
-  static bool nightLightLedOff = false;
-
+// set desired led adc value based on brightness
+void setLedAdcTgt(void) {
+  static bool offDueToLight = false;
   if(nightLightMode) {
-    if(!nightLightLedOff && lightSens > 
-          (nightlightThresh + THRESHOLD_HIST))
-      nightLightLedOff = true;
-    if(nightLightLedOff && lightSens < 
-          (nightlightThresh - THRESHOLD_HIST))
-      nightLightLedOff = false;
-    if(nightLightLedOff) {
-      ledCurrentTgt = 0;
-      return;
+    if(offDueToLight && 
+        lightAdc > (nightlightThresh + THRESHOLD_HIST)){
+      offDueToLight = false; 
     }
+    if(!offDueToLight && 
+         lightAdc < (nightlightThresh - THRESHOLD_HIST))
+      offDueToLight = true;
   }
   else
-    nightLightLedOff = false;
+    // not nightLightMode
+    offDueToLight = false;
 
-  // led not forced off by nightLightLedOff
-  if(brightness == 0) {
-    ledCurrentTgt = 0;
+  if(offDueToLight) {
+    ledAdcTgt = 0;
     return;
   }
-  if(brightness == MAX_BRIGHTNESS)
-    ledCurrentTgt = MAX_CURRENT;
-    return;
-  }
+  // offDueToLight is off
 
-  // brightness (0..7)  is 2^^(brightness-1) ma,  1/2, 1, .. 64 ma
-  if((brightness-1) >= 0)
+  // -- calc target adc from brightness and battery voltage
 
+  // for batv of 4.2v, each adc count is 4.2/1024 == 4.1mv
+  // adc reading of diode is 0.7v / 4.1mv => 170 counts
+  // expTable[1] == 1, expTable[12] == 64
+  //  1 * 170 * (1/128) => adc count 1 
+  //    1 * 0.0041 => 41mv, 0.0041 / 2.2 => 1.86 ma
+  // 64 * 170 * (1/128) => adc count 85
+  //   85 * 0.0041 => 0.35v,  0.35 / 2.2 => 159 ma
 
+  // for batv of 3.35v, each adc count is 3.35/1024 == 3.3mv
+  // adc reading of diode is 0.7v / 0.0033 => 212 counts
+  // expTable[1] == 1, expTable[12] == 64
+  //  1 * 212 * (8/1024) => adc count 1 
+  //    1 * 0.0033 => 3.3mv, 0.0033 / 2.2 => 1.5 ma
+  // 64 * 212 * (8/1024) => adc count 106
+  //  106 * 0.0033 => 0.35v,  0.35 / 2.2 => 159 ma
 
-  if(ledCurrentTgt > MAX_CURRENT) ledCurrentTgt = MAX_CURRENT;
-  }
+  // brightness ==  1 => 1.5 ma
+  // brightness == 14 => 159 ma
+
+  ledAdcTgt = ((u32) expTable[brightness] * 
+                     batteryAdc * LED_ADC_TGT_FACTOR) >> 10;
+  if(ledAdcTgt > MAX_LED_ADC_TGT) 
+     ledAdcTgt = MAX_LED_ADC_TGT;
 }
 
-// calls handleAdcInt to get led current
-// and uses it to adjust pwm to ledCurrentTgt
+#define PWM_INC 1  // adj pwm this amount each interrupt
+
+// adjust pwm so ledAdc == ledAdcTgt
 void adjustPwm(void) {
    static u16 pwmVal = 0;
-   u16 current;
-   if(ledCurrentTgt == 0) {
-     set16(LED_PWM_, 0);
-     return;
-   }
-   if(ledCurrentTgt >= MAX_CURRENT) {
-     set16(LED_PWM_, MAX_PWM);
-     return;
-   }
-   current = handleAdcInt(); // already adjusted for bat level
+
+   u16 ledAdc = handleAdcInt();
+
    // pwm value only changes by 1 each interrupt
-   if(current < ledCurrentTgt && pwmVal < MAX_PWM) pwmVal++;
-   if(current > ledCurrentTgt && pwmVal > 0)       pwmVal--;
+   if(ledAdc < ledAdcTgt && 
+      pwmVal < MAX_PWM) pwmVal += PWM_INC;
+   if(ledAdc > ledAdcTgt && 
+      pwmVal > 0)       pwmVal -= PWM_INC;
    set16(LED_PWM_, pwmVal);
 }
 
