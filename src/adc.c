@@ -9,17 +9,12 @@
 #define CH_MASK   0x0f  // in ADC1->CSR
 
 #define BAT_ADC_CHAN     2
-#define LED_ADC_CHAN   4
+#define LED_ADC_CHAN     4
 #define LIGHT_ADC_CHAN   5
 
 u16 lightAdc   = 170;
-u16 batteryAdc = 170;
-
- // channel being converted
-u8 curAdcChan = BAT_ADC_CHAN;
 
 void startAdc(u8 chan) {
-  if(chan != LED_ADC_CHAN) curAdcChan = chan;
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
   ADC1->CR1 |= ADC1_CR1_ADON; // start conversion
 }
@@ -30,6 +25,11 @@ u16 waitForAdc(void) {
   ADC1->CSR &= ~ADC1_CSR_EOC; // turn off end-of-conversion flag
   return get16(ADC1->DR);
 }
+
+// channel being converted between ints
+// light or battery
+u8 curAdcChan = BAT_ADC_CHAN;
+bool adcActive = false;
 
 void initAdc(void) {
   // set gpio pins as inputs to avoid driving pins not being converted
@@ -63,7 +63,11 @@ void initAdc(void) {
     // ADC1_CR3_OVR     ((uint8_t)0x40) /*!< Overrun Status Flag mask
 
   // batterySens must be first, used immediately
+  startAdc(LIGHT_ADC_CHAN); 
+  lightAdc = waitForAdc();
   startAdc(BAT_ADC_CHAN); 
+  curAdcChan = BAT_ADC_CHAN;
+  adcActive = true;
 }
 
 // this protects the battery from under voltage
@@ -71,27 +75,49 @@ void initAdc(void) {
 // 3v => 0.7 / (3/1024) => 240
 #define BAT_UNDER_VOLTAGE_THRES 239
 
+// alternating get light or battery reading
+// every 100 ms
+#define ADC_INTERVAL_MS 100
+
 // called from timer int in led.c
 // returns led current in adc count
 // sort of like a main loop
 u16 handleAdcInt(void) {
-  u16 ledAdc;
+  statuc u16 batteryAdc  = 0;
+  static u16 lastAdcTime = 0;
 
+  u16 ledAdc;
+  u16 now = millis();
+  
   // wait for previous battery or light conversion
-  if(curAdcChan == BAT_ADC_CHAN) {
-    batteryAdc = waitForAdc(); 
-    // battery under-voltage protection
-    if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
-    setLedAdcTgt();
+  if(adcActive) {
+    if(curAdcChan == BAT_ADC_CHAN) {
+      batteryAdc = waitForAdc(); 
+      // battery under-voltage protection
+      if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
+    }
+    else
+      lightAdc = waitForAdc(); 
+    lastAdcTime = now;
+    adcActive   = false;
   }
-  else lightAdc = waitForAdc(); 
 
   startAdc(LED_ADC_CHAN);
   ledAdc = waitForAdc();
+  setLedAdcTgt(batteryAdc);
 
   // start next conversion to run between interrupts;
-  if(curAdcChan == BAT_ADC_CHAN) startAdc(LIGHT_ADC_CHAN); 
-  else                           startAdc(BAT_ADC_CHAN); 
-
+  // this happens every 100 ms
+  if((now - lastAdcTime) > ADC_INTERVAL_MS) {
+    if(curAdcChan == BAT_ADC_CHAN) {
+      startAdc(LIGHT_ADC_CHAN); 
+      curAdcChan = LIGHT_ADC_CHAN;
+    }
+    else {
+      startAdc(BAT_ADC_CHAN); 
+      curAdcChan = BAT_ADC_CHAN;
+    }
+    adcActive = true;
+  }
   return ledAdc;
 }

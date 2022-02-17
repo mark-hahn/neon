@@ -9,8 +9,11 @@
 #define DEFAULT_BRIGHTNESS 12  //  80 ma
 
 // todo -- measure this
-#define MAX_NIGHTLIGHT_THRESHOLD 200
-#define DEF_NIGHTLIGHT_THRESHOLD 100  
+#define NIGHTLIGHT_THRESHOLD_INC  20  
+#define MAX_NIGHTLIGHT_THRESHOLD 400
+#define DEF_NIGHTLIGHT_THRESHOLD 300  
+#define MIN_NIGHTLIGHT_THRESHOLD 200
+#define THRESHOLD_HISTERISIS      10
 
 extern bool nightLightMode;
 extern u8   nightlightThresh;

@@ -42,9 +42,9 @@ void adjBrightness(bool cw) {
 void adjNightLightThreshold(bool cw) {
   // turning up threshold makes led turn on
   if( cw && nightlightThresh < MAX_NIGHTLIGHT_THRESHOLD) {
-      nightlightThresh++;
-  if(!cw && nightlightThresh > 0) 
-      nightlightThresh--;
+      nightlightThresh += NIGHTLIGHT_THRESHOLD_INC;
+  if(!cw && nightlightThresh > MIN_NIGHTLIGHT_THRESHOLD) 
+      nightlightThresh -= NIGHTLIGHT_THRESHOLD_INC;
   setEepromByte(eeprom_threshold_adr, nightlightThresh);
 }
 
@@ -58,7 +58,7 @@ void buttonPress(void) {
   buttonPressCount++; // debug
 }
 
-#define DEBOUNCE_DELAY_MS 1000
+#define DEBOUNCE_DELAY_MS 50
 
 u16 lastBtnActivity = 0;
 
@@ -127,7 +127,6 @@ void initInput(void) {
 }
 
 #define CLICK_DELAY     300  // 300 ms  timeout for counting clicks
-#define SETTING_DELAY 30000  //  30 sec timeout while setting
 
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority

@@ -19,7 +19,7 @@ void flash(count);
 
 @far @interrupt void tim2IntHandler();
 
-void setLedAdcTgt(void);
+void setLedAdcTgt(u16 batteryAdc);
 void initLed(void);
 
 #endif  // _LED_

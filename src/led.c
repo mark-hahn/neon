@@ -55,7 +55,7 @@ void flash(count) {
 // see end of file for calculations
 // brightness ==  1 => 1.5 ma
 // brightness == 14 => 159 ma
-void setLedAdcTgt(void) {
+void setLedAdcTgt(u16 batteryAdc) {
   static bool offDueToLight = false;
   u16 now = millis();
 
@@ -80,11 +80,11 @@ void setLedAdcTgt(void) {
 
   if(nightLightMode) {
     if(offDueToLight && 
-         lightAdc > (nightlightThresh + THRESHOLD_HIST)){
+         lightAdc > (nightlightThresh + THRESHOLD_HISTERISIS)){
       offDueToLight = false; 
     }
     if(!offDueToLight && 
-         lightAdc < (nightlightThresh - THRESHOLD_HIST))
+         lightAdc < (nightlightThresh - THRESHOLD_HISTERISIS))
       offDueToLight = true;
   }
   else
@@ -110,13 +110,14 @@ void adjustPwm(void) {
 
    u16 ledAdc = handleAdcInt();
 
-   // pwm value only changes by 1 each interrupt
-   if(ledAdc < ledAdcTgt && 
-      pwmVal < MAX_PWM) pwmVal += PWM_INC;
-   if(ledAdc > ledAdcTgt && 
-      pwmVal > 0)       pwmVal -= PWM_INC;
-   set16(LED_PWM_, pwmVal);
-}
+  // pwm value only changes by 1 each interrupt
+  if(ledAdc < ledAdcTgt && pwmVal < MAX_PWM) 
+                          pwmVal += PWM_INC;
+  else if(ledAdc > ledAdcTgt) {
+    if(pwmVal >= PWM_INC) pwmVal -= PWM_INC;
+    else                  pwmVal  = 0;
+    set16(LED_PWM_, pwmVal);
+  }
 
 // timer interrupts every 64 usecs
 @far @interrupt void tim2IntHandler() {
