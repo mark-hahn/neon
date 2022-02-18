@@ -6,7 +6,7 @@
 
 // ambient light (photo-resistor)
 extern u16 lightAdc; 
-extern u16 batteryAdc;
+
 void initAdc(void);
 
 // called from timer int in led.c

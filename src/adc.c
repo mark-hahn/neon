@@ -12,7 +12,8 @@
 #define LED_ADC_CHAN     4
 #define LIGHT_ADC_CHAN   5
 
-u16 lightAdc   = 170;
+// start with light off if in nightlight mode
+u16 lightAdc = 1000; 
 
 void startAdc(u8 chan) {
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
@@ -26,8 +27,7 @@ u16 waitForAdc(void) {
   return get16(ADC1->DR);
 }
 
-// channel being converted between ints
-// light or battery
+// light or battery are converted between ints
 u8   curAdcChan = BAT_ADC_CHAN;
 bool adcActive  = false;
 
@@ -65,14 +65,14 @@ void initAdc(void) {
     // ADC1_CR3_OVR     ((uint8_t)0x40) /*!< Overrun Status Flag mask
 
   ADC1->CR1 |= ADC1_CR1_ADON; // first time only powers on
-  for(i=0; 1 < 16*7; i++);    // wait for > 7 us for adc to stabilize
+  for(i=0; i < 16*7; i++);    // wait for > 7 us for adc to stabilize
 
-  // batterySens must be first, used immediately
   startAdc(LIGHT_ADC_CHAN); 
   lightAdc = waitForAdc();
+
   startAdc(BAT_ADC_CHAN); 
   curAdcChan = BAT_ADC_CHAN;
-  adcActive = true;
+  adcActive  = true;
 }
 
 // this protects the battery from under voltage
@@ -87,18 +87,21 @@ void initAdc(void) {
 // returns led current in adc count
 // sort of like a main loop
 u16 handleAdcInt(void) {
-  static u16 batteryAdc  = 0;
   static u16 lastAdcTime = 0;
-
   u16 ledAdc;
   u16 now = millis();
   
-  // wait for previous battery or light conversion
+  // battery or light conversion happens every 100 ms
+  // started at end of this function and finishes here
   if(adcActive) {
     if(curAdcChan == BAT_ADC_CHAN) {
-      batteryAdc = waitForAdc(); 
+      u16 batteryAdc = waitForAdc(); 
+			
       // battery under-voltage protection
       if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
+			
+      // set led adc target, uses brightness var and battery voltage
+      setLedAdcTgt(batteryAdc);
     }
     else
       lightAdc = waitForAdc(); 
@@ -107,8 +110,8 @@ u16 handleAdcInt(void) {
   }
 
   startAdc(LED_ADC_CHAN);
+  // returned below
   ledAdc = waitForAdc();
-  setLedAdcTgt(batteryAdc);
 
   // start next conversion to run between interrupts;
   // this happens every 100 ms

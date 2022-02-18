@@ -17,10 +17,7 @@ volatile u16 msCounter;
 // returns elapsed ms, rolls over every 65 secs
 // called by input.c which runs at low priority
 u16 millis(void) {
-  u16 ms;
-  // running at input low priority
-  ms = msCounter;
-  return ms;
+  return msCounter;
 }
 
 // 2**(idx/2)  (except for idx == 0 && idx == 32)
@@ -80,11 +77,11 @@ void setLedAdcTgt(u16 batteryAdc) {
 
   if(nightLightMode) {
     if(offDueToLight && 
-         lightAdc > (nightlightThresh + THRESHOLD_HISTERISIS)){
+         lightAdc < (nightlightThresh - THRESHOLD_HISTERISIS)){
       offDueToLight = false; 
     }
     if(!offDueToLight && 
-         lightAdc < (nightlightThresh - THRESHOLD_HISTERISIS))
+         lightAdc > (nightlightThresh + THRESHOLD_HISTERISIS))
       offDueToLight = true;
   }
   else

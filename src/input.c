@@ -14,8 +14,8 @@ u8   brightness       = DEFAULT_BRIGHTNESS;
 // this turns off 3.3v power to mcu
 // this never returns;
 void powerDown() {
-  pwron_clr;
-  while(true);
+//  pwron_clr;
+//  while(true;
 }
 
 u8 clickCount = 0;
@@ -48,33 +48,40 @@ void adjNightLightThreshold(bool cw) {
   setEepromByte(eeprom_threshold_adr, nightlightThresh);
 }
 
-u16 lastClickTime = 0;
+u16 lastPressTime = 0;
 
 volatile u16 buttonPressCount = 0; // debug
+volatile u16 buttonIntCount   = 0; // debug
 
 void buttonPress(void) {
-  lastClickTime = millis();
+  lastPressTime = millis();
   clickCount++;
+	
   buttonPressCount++; // debug
 }
 
-#define DEBOUNCE_DELAY_MS 50
+#define DEBOUNCE_DELAY_MS 1  // ignore interrupts 1-2 ms after first
+u16 lastBtnPressMs = 0;
 
-u16 lastBtnActivity = 0;
+bool btnWaitDebounce = false;
 
 // irq6 interrupt, button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
-  static bool btnWaitDebounce  = false;
+//  static bool btnWaitDebounce = false;
   u16 now = millis();
+	
+	buttonIntCount++;  // debug
 
-  // check button if no activity for 10ms
-  if(btnWaitDebounce && ((now - lastBtnActivity) > DEBOUNCE_DELAY_MS))
+  // check for end of debounce delay
+  if(btnWaitDebounce && ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
     btnWaitDebounce = false;
 
   if(!btnWaitDebounce) {
     // level should always be high since only interrupts on rising edge
+    // buttonPress called instantly unless during bounce delay
     buttonPress();
-    lastBtnActivity = now;
+    // ignore ints for 1 to 2 ms
+    lastBtnPressMs  = now;
     btnWaitDebounce = true;
   }
 }
@@ -91,9 +98,9 @@ u16 lastBtnActivity = 0;
   if(!(EncAHigh && !lastEncAHigh)) return;  // not A rising
   lastEncAHigh = EncAHigh;
 
-  if(encAWaitDebounce && 
-      ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
-    encAWaitDebounce = false;
+  if(btnWaitDebounce && 
+	    ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
+    btnWaitDebounce = false;
 
   if(!encAWaitDebounce) {
     if(button_lvl) {
@@ -126,7 +133,7 @@ void initInput(void) {
   EXTI->CR1 = 0x55;
 }
 
-#define CLICK_DELAY     300  // 300 ms  timeout for counting clicks
+#define CLICK_DELAY     300  // 300 ms timeout for counting clicks
 
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
@@ -140,9 +147,13 @@ void inputLoop(void) {
   }
 
   // click delay timeout starts on button release
-  if(button_lvl) lastBtnActivity = now;
+  if(button_lvl) lastBtnPressMs = now;
 
-  if(clickCount > 0 && ((now - lastClickTime) > CLICK_DELAY)) 
+  if(btnWaitDebounce && 
+	    ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
+    btnWaitDebounce = false;
+
+  if(clickCount > 0 && ((now - lastPressTime) > CLICK_DELAY)) 
     clickTimeout();
 }
 
