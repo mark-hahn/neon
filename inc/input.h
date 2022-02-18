@@ -4,16 +4,22 @@
 #include "stm8s.h"
 #include "main.h"
 
-// brightness (0..16) (could probably be bigger)
-#define MAX_BRIGHTNESS     14  // 159 ma
-#define DEFAULT_BRIGHTNESS 12  //  80 ma
+// brightness (0..12) 
+// the max holds with battery down to 3.35v
+#define MAX_BRIGHTNESS     12  // 159 ma
+#define DEFAULT_BRIGHTNESS 10  //  80 ma
 
 // todo -- measure this
 #define NIGHTLIGHT_THRESHOLD_INC  20  
-#define MAX_NIGHTLIGHT_THRESHOLD 400
-#define DEF_NIGHTLIGHT_THRESHOLD 300  
-#define MIN_NIGHTLIGHT_THRESHOLD 200
+#define MAX_NIGHTLIGHT_THRESHOLD 800
+#define DEF_NIGHTLIGHT_THRESHOLD 700  
+#define MIN_NIGHTLIGHT_THRESHOLD 600
 #define THRESHOLD_HISTERISIS      10
+
+// range used to dim brightness (set lightFactor in led.c)
+#define MAX_LIGHT_ADC   800
+#define MIN_LIGHT_ADC   700
+#define LIGHT_ADC_RANGE (MAX_LIGHT_ADC - MIN_LIGHT_ADC)
 
 extern bool nightLightMode;
 extern u8   nightlightThresh;

@@ -49,11 +49,11 @@ void flash(u8 count) {
 }
 
 // calc led adc value based on batv and brightness
-// see end of file for calculations
 // brightness ==  1 => 1.5 ma
-// brightness == 14 => 159 ma
+// brightness == 12 => 159 ma
 void setLedAdcTgt(u16 batteryAdc) {
   static bool offDueToLight = false;
+  u16 lightFactor;
   u16 now = millis();
 
   if(flashState == flash_active) {
@@ -92,16 +92,28 @@ void setLedAdcTgt(u16 batteryAdc) {
     ledAdcTgt = 0;
     return;
   }
+  // calc factor that dims brightness based on room light
+  // factor is lightAdc of 700 - 800, (0.5 to 1)
+  if(lightAdc > MAX_LIGHT_ADC)        // 800
+    lightFactor = LIGHT_ADC_RANGE;    // 100
+  else if (lightAdc < MIN_LIGHT_ADC)  // 700
+    lightFactor = LIGHT_ADC_RANGE / 2;
+  else
+    lightFactor = (lightAdc - MIN_LIGHT_ADC);
 
-  ledAdcTgt = ((u32) expTable[brightness] * 
-                     batteryAdc * LED_ADC_TGT_FACTOR) >> 10;
+  // rough bits per factor is ...
+  //   exptable(6) + battery(8) + adctgt(3) + light(7) => 24
+  // total(24) - maxTgt(10) => 14 bits to shift
+  // todo - measure actual
+  ledAdcTgt = ((u32) expTable[brightness] * batteryAdc * 
+                     LED_ADC_TGT_FACTOR   * lightFactor) >> 14;
   if(ledAdcTgt > MAX_LED_ADC_TGT) 
      ledAdcTgt = MAX_LED_ADC_TGT;
 }
-
 #define PWM_INC 1  // adj pwm this amount each interrupt
 
 // adjust pwm so ledAdc == ledAdcTgt
+// todo -- use pid
 void adjustPwm(void) {
    static u16 pwmVal = 0;
 
@@ -219,24 +231,3 @@ void initLed(void) {
   TIM2->EGR  = TIM2_EGR_UG;  // force update of registers
   TIM2->CR1 |= TIM2_CR1_CEN; // 0x01 enable TM2
 }
-
-  // -- calc target adc from brightness and battery voltage
-
-  // maximum battery voltage
-  // for batv of 4.2v, each adc count is 4.2/1024 == 4.1mv
-  // adc reading of diode is 0.7v / 4.1mv => 170 counts
-  // expTable[1] == 1, expTable[12] == 64
-  //  1 * 170 * (1/128) => adc count 1 
-  //    1 * 0.0041 => 41mv, 0.0041 / 2.2 => 1.86 ma
-  // 64 * 170 * (1/128) => adc count 85
-  //   85 * 0.0041 => 0.35v,  0.35 / 2.2 => 159 ma
-
-  // minimum battery voltage for full brightness
-  // for batv of 3.35v, each adc count is 3.35/1024 == 3.3mv
-  // adc reading of diode is 0.7v / 0.0033 => 212 counts
-  // expTable[1] == 1, expTable[12] == 64
-  //  1 * 212 * (8/1024) => adc count 1 
-  //    1 * 0.0033 => 3.3mv, 0.0033 / 2.2 => 1.5 ma
-  // 64 * 212 * (8/1024) => adc count 106
-  //  106 * 0.0033 => 0.35v,  0.35 / 2.2 => 159 ma
-  
