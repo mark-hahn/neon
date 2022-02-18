@@ -121,7 +121,7 @@ void adjustPwm(void) {
 }
 
 // timer interrupts every 64 usecs
-@far @interrupt void tim2IntHandler() {
+@svlreg @far @interrupt void tim2IntHandler() {
   // used by millis()
   static u16 intCounter = 0;
 

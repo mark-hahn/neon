@@ -17,7 +17,7 @@ u16 millis(void);
 // flash led count+1 times
 void flash(u8 count);
 
-@far @interrupt void tim2IntHandler();
+@svlreg @far @interrupt void tim2IntHandler();
 
 void setLedAdcTgt(u16 batteryAdc);
 void initLed(void);

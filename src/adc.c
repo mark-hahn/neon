@@ -28,10 +28,12 @@ u16 waitForAdc(void) {
 
 // channel being converted between ints
 // light or battery
-u8 curAdcChan = BAT_ADC_CHAN;
-bool adcActive = false;
+u8   curAdcChan = BAT_ADC_CHAN;
+bool adcActive  = false;
 
 void initAdc(void) {
+  u8 i;
+
   // set gpio pins as inputs to avoid driving pins not being converted
   bsens_in;    // C4  ADC2
   cursens_in;  // D3  ADC4
@@ -61,6 +63,9 @@ void initAdc(void) {
   ADC1->CR3 = 0; // (unused, no data buffering)
     // ADC1_CR3_DBUF    ((uint8_t)0x80) /*!< Data Buffer Enable mask
     // ADC1_CR3_OVR     ((uint8_t)0x40) /*!< Overrun Status Flag mask
+
+  ADC1->CR1 |= ADC1_CR1_ADON; // first time only powers on
+  for(i=0; 1 < 16*7; i++);    // wait for > 7 us for adc to stabilize
 
   // batterySens must be first, used immediately
   startAdc(LIGHT_ADC_CHAN); 
