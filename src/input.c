@@ -50,14 +50,9 @@ void adjNightLightThreshold(bool cw) {
 
 u16 lastPressTime = 0;
 
-volatile u16 buttonPressCount = 0; // debug
-volatile u16 buttonIntCount   = 0; // debug
-
 void buttonPress(void) {
   lastPressTime = millis();
   clickCount++;
-	
-  buttonPressCount++; // debug
 }
 
 #define DEBOUNCE_DELAY_MS 1  // ignore interrupts 1-2 ms after first
@@ -70,11 +65,9 @@ bool btnWaitDebounce = false;
 //  static bool btnWaitDebounce = false;
   u16 now = millis();
 	
-	buttonIntCount++;  // debug
-
-  // check for end of debounce delay
-  if(btnWaitDebounce && ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
-    btnWaitDebounce = false;
+	if(btnWaitDebounce && 
+		((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
+	btnWaitDebounce = false;
 
   if(!btnWaitDebounce) {
     // level should always be high since only interrupts on rising edge
@@ -86,31 +79,45 @@ bool btnWaitDebounce = false;
   }
 }
 
+bool encAWaitDebounce = false;
+u16  lastEncAActivity = 0;
+
+volatile u16 encIntCount    = 0; // debug
+volatile u16 cwCount        = 0; // debug
+volatile u16 ccwCount       = 0; // debug
+
 // irq5 interrupt, either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
-  static bool lastEncAHigh     = true;
-  static bool encAWaitDebounce = false;
-  static u16  lastEncAActivity = 0;
-
+  static bool lastencAHigh = true;
   u16 now = millis();
+	
+  bool encAHigh       = (enca_lvl != 0);
+	bool encARisingEdge = (encAHigh && !lastencAHigh);
+	lastencAHigh = encAHigh;
+	
+	encIntCount++;
+	
+	if(!encARisingEdge) return;  
 
-  bool EncAHigh = (enca_lvl != 0);
-  if(!(EncAHigh && !lastEncAHigh)) return;  // not A rising
-  lastEncAHigh = EncAHigh;
-
-  if(btnWaitDebounce && 
-	    ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
-    btnWaitDebounce = false;
+  if(encAWaitDebounce && 
+	    ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
+	  encAWaitDebounce = false;
 
   if(!encAWaitDebounce) {
+		bool cw = encb_lvl;
+		
+		// debug
+    if(cw) cwCount++;
+    else   ccwCount++;
+
     if(button_lvl) {
-      // turning knob while knob pressed
+		  // turning knob while knob pressed
       // set nightlight light threshold
-      adjNightLightThreshold(encb_lvl);
+      adjNightLightThreshold(cw);
     }
     else {
       // turning knob while not pressed
-      adjBrightness(encb_lvl);
+      adjBrightness(cw);
     }
     lastEncAActivity = now;
     encAWaitDebounce = true;
@@ -152,6 +159,10 @@ void inputLoop(void) {
   if(btnWaitDebounce && 
 	    ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
     btnWaitDebounce = false;
+
+  if(encAWaitDebounce && 
+	    ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
+    encAWaitDebounce = false;
 
   if(clickCount > 0 && ((now - lastPressTime) > CLICK_DELAY)) 
     clickTimeout();
