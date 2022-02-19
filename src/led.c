@@ -27,8 +27,6 @@ const u16 expTable[33] = {0x0000,
   0x016a, 0x0200, 0x02d4, 0x0400, 0x05a8, 0x0800, 0x0b50, 0x1000, 
   0x16a1, 0x2000, 0x2d41, 0x4000, 0x5a82, 0x8000, 0xb505, 0xffff};
 
-u16 ledAdcTgt = 0;
-
 #define FLASH_DURATION_MS 300
 
 enum {
@@ -47,6 +45,8 @@ void flash(u8 count) {
   lastFlashActionMs = millis();
   flashes_remaining = count+1;
 }
+
+u16 ledAdcTgt = 0;
 
 // calc led adc value based on batv and brightness
 // brightness ==  1 => 1.5 ma
@@ -110,23 +110,36 @@ void setLedAdcTgt(u16 batteryAdc) {
   if(ledAdcTgt > MAX_LED_ADC_TGT) 
      ledAdcTgt = MAX_LED_ADC_TGT;
 }
-#define PWM_INC 1  // adj pwm this amount each interrupt
+#define PWM_DIV     2  // divide integral by 2**PWM_DIV
+#define MAX_PWM   800  // largest safe current
+#define MIN_PWM   300  // slightly smaller than turn-on
+
+u16 pwmDebug = 0; // debug
+i16 integErr = 0; // debug, should be static in function
 
 // adjust pwm so ledAdc == ledAdcTgt
-// todo -- use pid
 void adjustPwm(void) {
-   static u16 pwmVal = 0;
+  // integral of error, i of pid
+  // static i16 integErr = 0;
 
-   u16 ledAdc = handleAdcInt();
-
-  // pwm value only changes by 1 each interrupt
-  if(ledAdc < ledAdcTgt && pwmVal < MAX_PWM) 
-                          pwmVal += PWM_INC;
-  else if(ledAdc > ledAdcTgt) {
-    if(pwmVal >= PWM_INC) pwmVal -= PWM_INC;
-    else                  pwmVal  = 0;
-    set16(LED_PWM_, pwmVal);
+  if(ledAdcTgt == 0) { 
+    integErr = 0;
+    set16(LED_PWM_, 0);
+    return; 
   }
+
+  // i of pid control, handleAdcInt returns led adc val
+  integErr += (ledAdcTgt - handleAdcInt());
+
+  if(integErr < (MIN_PWM << PWM_DIV))
+     integErr = (MIN_PWM << PWM_DIV);
+
+  if(integErr > (MAX_PWM << PWM_DIV))
+     integErr = (MAX_PWM << PWM_DIV);
+
+  set16(LED_PWM_, pwmDebug);
+
+  // set16(LED_PWM_, (integErr >> PWM_DIV));
 }
 
 // wait 10 ms for everything to stabilize
@@ -199,7 +212,7 @@ void initLed(void) {
     //TIM2_CCER1_CC1NP  | // 0x08 Capture/Compare 2 Complementary output Polarity mask
     //TIM2_CCER1_CC1NE  | // 0x04 Capture/Compare 2 Complementary output enable mask
     //TIM2_CCER1_CC1P   | // 0x02 Capture/Compare 1 output Polarity (active high)
-    //TIM2_CCER1_CC1E   | // 0x01 Capture/Compare 1 output enable   (left pwm on)
+    //TIM2_CCER1_CC1E   | // 0x01 Capture/Compare 1 output enable
     0;
 
   TIM2->CCER1 = 0; // Capture/Compare channel 1  not used
