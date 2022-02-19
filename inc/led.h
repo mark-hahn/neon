@@ -14,6 +14,10 @@
 // returns elapsed ms, rolls over every 4 secs (64 usecs * 65536)
 u16 millis(void);
 
+// wait 10 ms for everything to stabilize
+#define PWR_ON_DELAY_MS  10  
+extern bool pwrOnStabilizing;
+
 // flash led count+1 times
 void flash(u8 count);
 

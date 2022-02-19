@@ -65,30 +65,21 @@ void initAdc(void) {
     // ADC1_CR3_OVR     ((uint8_t)0x40) /*!< Overrun Status Flag mask
 
   ADC1->CR1 |= ADC1_CR1_ADON; // first time only powers on
-  for(i=0; i < 16*7; i++);    // wait for > 7 us for adc to stabilize
 
-  startAdc(LIGHT_ADC_CHAN); 
-  lightAdc = waitForAdc();
-
-  startAdc(BAT_ADC_CHAN); 
-  curAdcChan = BAT_ADC_CHAN;
-  adcActive  = true;
+  // true between handleAdcInt calls
+  // when adc started for light or battery
+  adcActive  = false;
 }
 
-// this protects the battery from under voltage
-// note that the adc reading goes up as voltage goes down
-// 3v => 0.7 / (3/1024) => 240
-#define BAT_UNDER_VOLTAGE_THRES 239
+u16 batAdc;  // debug
 
-// alternating get light or battery reading
-// every 100 ms
-#define ADC_INTERVAL_MS 100
 // called from timer int in led.c
 // returns led current in adc count
 // sort of like a main loop
 u16 handleAdcInt(void) {
+  static bool waitingToStartBatAdc = true;
   static u16 lastAdcTime = 0;
-  u16 ledAdc;
+  u16 ledAdc = 0xfff; // keep pwm low at beginning
   u16 now = millis();
   
   // battery or light conversion happens every 100 ms
@@ -96,6 +87,8 @@ u16 handleAdcInt(void) {
   if(adcActive) {
     if(curAdcChan == BAT_ADC_CHAN) {
       u16 batteryAdc = waitForAdc(); 
+
+			batAdc = batteryAdc;
 			
       // battery under-voltage protection
       if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
@@ -109,20 +102,24 @@ u16 handleAdcInt(void) {
     adcActive   = false;
   }
 
-  startAdc(LED_ADC_CHAN);
-  // returned below
-  ledAdc = waitForAdc();
+  if(!waitingToStartBatAdc) {
+    startAdc(LED_ADC_CHAN);
+    // returned below
+    ledAdc = waitForAdc();
+  }
 
   // start next conversion to run between interrupts;
   // this happens every 100 ms
   if((now - lastAdcTime) > ADC_INTERVAL_MS) {
-    if(curAdcChan == BAT_ADC_CHAN) {
+    if(!waitingToStartBatAdc && 
+        curAdcChan == BAT_ADC_CHAN) {
       startAdc(LIGHT_ADC_CHAN); 
       curAdcChan = LIGHT_ADC_CHAN;
     }
     else {
       startAdc(BAT_ADC_CHAN); 
       curAdcChan = BAT_ADC_CHAN;
+      waitingToStartBatAdc = false;
     }
     adcActive = true;
   }

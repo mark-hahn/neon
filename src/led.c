@@ -12,7 +12,7 @@
 #define LED_PWM_L TIM2->CCR2L
 #define LED_PWM_H TIM2->CCR2H
 
-volatile u16 msCounter;
+volatile u16 msCounter = 0;
 
 // returns elapsed ms, rolls over every 65 secs
 // called by input.c which runs at low priority
@@ -94,13 +94,13 @@ void setLedAdcTgt(u16 batteryAdc) {
   }
   // calc factor that dims brightness based on room light
   // factor is lightAdc of 700 - 800, (0.5 to 1)
-  if(lightAdc > MAX_LIGHT_ADC)        // 800
-    lightFactor = LIGHT_ADC_RANGE;    // 100
-  else if (lightAdc < MIN_LIGHT_ADC)  // 700
-    lightFactor = LIGHT_ADC_RANGE / 2;
+  if(lightFactor > MAX_LIGHT_ADC)       // 160
+    lightFactor = MAX_LIGHT_ADC;
+  else if (lightFactor < MIN_LIGHT_ADC) //  10
+    lightFactor = MIN_LIGHT_ADC;
   else
     lightFactor = (lightAdc - MIN_LIGHT_ADC);
-
+    
   // rough bits per factor is ...
   //   exptable(6) + battery(8) + adctgt(3) + light(7) => 24
   // total(24) - maxTgt(10) => 14 bits to shift
@@ -129,11 +129,14 @@ void adjustPwm(void) {
   }
 }
 
+// wait 10 ms for everything to stabilize
+bool pwrOnStabilizing = true;
+
 // timer interrupts every 64 usecs
 @svlreg @far @interrupt void tim2IntHandler() {
   // used by millis()
   static u16 intCounter = 0;
-
+	
   // clear all timer 2 int flags
   TIM2->SR1 = 0;
 
@@ -141,6 +144,13 @@ void adjustPwm(void) {
     msCounter++;
     intCounter = 0;
   }
+	
+  if(pwrOnStabilizing && (msCounter > PWR_ON_DELAY_MS)) {
+    flash(nightLightMode);
+    pwrOnStabilizing = false;
+  }
+	if(pwrOnStabilizing) return;
+
   // run these each interrupt, sort of like a main loop
   adjustPwm();
   inputLoop();

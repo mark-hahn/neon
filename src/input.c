@@ -13,8 +13,8 @@ u8   brightness       = DEFAULT_BRIGHTNESS;
 // set pwron gpio pin low
 // this turns off 3.3v power to mcu
 // this never returns;
-void powerDown() {
-//  pwron_clr;
+void powerDown() {  
+  pwron_clr;
 //  while(true;
 }
 
@@ -62,9 +62,10 @@ bool btnWaitDebounce = false;
 
 // irq6 interrupt, button pin rising edge (port D)
 @far @interrupt void buttonIntHandler() {
-//  static bool btnWaitDebounce = false;
   u16 now = millis();
 	
+  if(pwrOnStabilizing) return;
+
 	if(btnWaitDebounce && 
 		((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
 	btnWaitDebounce = false;
@@ -90,15 +91,16 @@ volatile u16 ccwCount       = 0; // debug
 @far @interrupt void encoderIntHandler() {
   static bool lastencAHigh = true;
   u16 now = millis();
-	
+
   bool encAHigh       = (enca_lvl != 0);
 	bool encARisingEdge = (encAHigh && !lastencAHigh);
 	lastencAHigh = encAHigh;
+	if(!encARisingEdge) return;  
 	
+  if(pwrOnStabilizing) return;
+
 	encIntCount++;
 	
-	if(!encARisingEdge) return;  
-
   if(encAWaitDebounce && 
 	    ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
 	  encAWaitDebounce = false;
@@ -140,19 +142,19 @@ void initInput(void) {
   EXTI->CR1 = 0x55;
 }
 
-#define CLICK_DELAY     300  // 300 ms timeout for counting clicks
+// 300 ms timeout for counting clicks
+#define CLICK_DELAY  300  
 
 // called every timer interrupt (64 usecs) from led.c
 // runs at highest interrupt priority
 void inputLoop(void) {
-  bool justPoweredOn = true;
+  static bool firstLoop = true;
   u16 now = millis();
 
-  if(justPoweredOn) {
+  if(firstLoop) {
     flash(nightLightMode);
-    justPoweredOn = false;
+    firstLoop = false;
   }
-
   // click delay timeout starts on button release
   if(button_lvl) lastBtnPressMs = now;
 

@@ -24,12 +24,16 @@ void main(void) {
   initEeprom();
 
   ints_on; // enable all interrupts
+	
+	// debug, cpu always running
+	// needed for debugging and to see power when not debugging
+  while(true);  
 
   // everything is interrupt driven
   // so from now on all code runs in int mode
   // waits in low-power wait mode until interrupt
-  // while(true) wait();
-  while(true)  ;  // debug, cpu always running
+	
+// while(true) wait();
 }
 
 // #define DBG_BUF_SIZE 256
