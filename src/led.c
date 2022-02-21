@@ -9,8 +9,8 @@
 #define INTS_PER_MS     16  // pwm freq == 16 KHz (compared to 100 Hz RC)
 
 #define LED_PWM_MAX   1024  // timer rolls over every 64 usecs
-#define LED_PWM_L TIM2->CCR2L
-#define LED_PWM_H TIM2->CCR2H
+#define LED_PWM_L TIM2->CCR3L
+#define LED_PWM_H TIM2->CCR3H
 
 volatile u16 msCounter = 0;
 
@@ -110,26 +110,25 @@ void setLedAdcTgt(u16 batteryAdc) {
   if(ledAdcTgt > MAX_LED_ADC_TGT) 
      ledAdcTgt = MAX_LED_ADC_TGT;
 }
-#define PWM_DIV     2  // divide integral by 2**PWM_DIV
-#define MAX_PWM   800  // largest safe current
-#define MIN_PWM   300  // slightly smaller than turn-on
 
 u16 pwmDebug = 0; // debug
 i16 integErr = 0; // debug, should be static in function
+u16 sensAdc;
 
 // adjust pwm so ledAdc == ledAdcTgt
 void adjustPwm(void) {
   // integral of error, i of pid
   // static i16 integErr = 0;
 
-  if(ledAdcTgt == 0) { 
+  if(false && ledAdcTgt == 0) { 
     integErr = 0;
     set16(LED_PWM_, 0);
     return; 
   }
-
+  sensAdc = handleAdcInt();
   // i of pid control, handleAdcInt returns led adc val
-  integErr += (ledAdcTgt - handleAdcInt());
+  integErr += (ledAdcTgt - sensAdc);
+
 
   if(integErr < (MIN_PWM << PWM_DIV))
      integErr = (MIN_PWM << PWM_DIV);
@@ -157,7 +156,6 @@ bool pwrOnStabilizing = true;
     msCounter++;
     intCounter = 0;
   }
-	
   if(pwrOnStabilizing && (msCounter > PWR_ON_DELAY_MS)) {
     flash(nightLightMode);
     pwrOnStabilizing = false;
@@ -184,8 +182,8 @@ void initLed(void) {
     0;
 
   TIM2->IER =  // timer 2 interrupt enable register
-    // TIM2_IER_CC3IE  | // 0x08 Capture/Compare 3 Interrupt Enable mask
-    TIM2_IER_CC2IE     | // 0x04 Capture/Compare 2 Interrupt Enable mask
+    TIM2_IER_CC3IE  |    // 0x08 Capture/Compare 3 Interrupt Enable mask
+    // TIM2_IER_CC2IE  | // 0x04 Capture/Compare 2 Interrupt Enable mask
     // TIM2_IER_CC1IE  | // 0x02 Capture/Compare 1 Interrupt Enable mask
     // TIM2_IER_UIE    | // 0x01 Update Interrupt Enable mask
     0;
@@ -194,29 +192,23 @@ void initLed(void) {
   // TIM2->SR2 (read-only)
   // TIM2->EGR (event gen only)
 
-  TIM2->CCMR3 = 0; // Capture/Compare channel 3 not used
+  // TIM2->CCMR1    // Capture/Compare channel 1 not used
+  // TIM2->CCMR2    // Capture/Compare channel 2 not used
 
-  TIM2->CCMR2 =    // Capture/Compare channel 2 (led pwm)
-    // TIM2_CCMR_OCxCE  | // 0x80  Output compare 2 clear enable <not in stm8s.h?>
+  TIM2->CCMR3 =     // Capture/Compare channel 3  (led pwm)
+    // TIM2_CCMR_OCxCE  | // 0x80  Output compare 3 clear enable <not in stm8s.h?>
     0x60                | // TIM2_CCMR_OCxM 0x70 Compare Mode mask (110 => PWM MODE 1)
-    // TIM2_CCMR_OCxPE  | // 0x08 Output Compare  x Preload Enable mask
-    // TIM2_CCMR_OCxFE  | // 0x04 Output Compare  x Fast Enable mask
-    // TIM2_CCMR_CCxS   | // 0x03 Capture/Compare x Selection mask  (0 => output)
+    // TIM2_CCMR_OCxPE  | // 0x08 Output Compare  3 Preload Enable mask
+    // TIM2_CCMR_CCxS   | // 0x03 Capture/Compare 3 Selection mask  (0 => output)
     0;
 
-  TIM2->CCMR3 = 
-    //TIM2_CCER1_CC2NP  | // 0x80 Capture/Compare 2 Complementary output Polarity mask
-    //TIM2_CCER1_CC2NE  | // 0x40 Capture/Compare 2 Complementary output enable mask
-    //TIM2_CCER1_CC2P   | // 0x20 Capture/Compare 2 output Polarity (active high)
-    TIM2_CCER1_CC2E     | // 0x10 Capture/Compare 2 output enable   (led pwm on)
-    //TIM2_CCER1_CC1NP  | // 0x08 Capture/Compare 2 Complementary output Polarity mask
-    //TIM2_CCER1_CC1NE  | // 0x04 Capture/Compare 2 Complementary output enable mask
-    //TIM2_CCER1_CC1P   | // 0x02 Capture/Compare 1 output Polarity (active high)
-    //TIM2_CCER1_CC1E   | // 0x01 Capture/Compare 1 output enable
+  // TIM2->CCER1          // cc1 & cc2 output control,  not used
+
+  TIM2->CCER2 =           // Capture/Compare channel 3   (led pwm)
+    // TIM2_CCER2_CC3P  | // 0x02 Capture/Compare 3 output Polarity (active high)
+    TIM2_CCER2_CC3E     | // 0x01 Capture/Compare 3 output enable
     0;
 
-  TIM2->CCER1 = 0; // Capture/Compare channel 1  not used
- 
   // TIM2->TIM2_CNTRH_CNT  // Counter 2 Value (MSB)
   // TIM2->TIM2_CNTRL_CNT  // Counter 2 Value (LSB)
  
@@ -231,21 +223,16 @@ void initLed(void) {
   // this doesn't change
   set16(TIM2->ARR, LED_PWM_MAX-1);
 
-  // Capture/Compare Values 
-  //     0 =>   0% duty cycle (fet gate voltage at min   0v)
-  //  1024 => 100% duty cycle (fet gate voltage at max 3.3v)
-  // start with led off
-  TIM2->CCR1L = 0;
-  TIM2->CCR1H = 0; 
-  TIM2->CCR2L = 0;
-  TIM2->CCR2H = 0; 
-
 // set pin low initially
   pwm_clr;
 
 // set pin as push-pull output
   pwm_out;
 
+  // Capture/Compare Values 
+  //     0 =>   0% duty cycle (fet gate voltage at min   0v)
+  //  1024 => 100% duty cycle (fet gate voltage at max 3.3v)
+  // start with led off
   set16(LED_PWM_, 0);  // start with pwm of zero
   
   // clear all timer 2 int flags

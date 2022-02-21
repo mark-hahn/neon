@@ -4,6 +4,10 @@
 #include "stm8s.h"
 #include "main.h"
 
+#define MAX_PWM   650  // largest useful, 3.3v:200ma, 4.2v:300ma
+#define MIN_PWM   200  // slightly smaller than 4.2v turn-on
+#define PWM_DIV     2  // divide PID integral by 2**PWM_DIV
+
 // adjust brightness here
 // directly affects adc tgt and led current
 // 8: brightness of 1 => 1.5 ma & 14 => 159 ma
