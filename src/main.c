@@ -18,10 +18,10 @@ void main(void) {
   // switch high-speed internal oscillator (HSI) to full-speed
   CLK->CKDIVR   = 0;
 
+  initEeprom(); // must be first
   initInput();
   initAdc();
   initLed();
-  initEeprom();
 
   ints_on; // enable all interrupts
 	

@@ -12,15 +12,23 @@
 #define LED_PWM_L TIM2->CCR3L
 #define LED_PWM_H TIM2->CCR3H
 
+u16 expTableDbg   = 0;
+u16 batteryAdcDbg = 0;
+u16 ledAdc;
+u16 ledAdcTgt = 0;
+i32 integErr  = 0; // debug, should be static in function
+u16 pwmDebug  = 0; // debug
+u16 pwm = 0;
+
 volatile u16 msCounter = 0;
 
 // returns elapsed ms, rolls over every 65 secs
-// called by input.c which runs at low priority
+// called by input.c
 u16 millis(void) {
   return msCounter;
 }
 
-// 2**(idx/2)  (except for idx == 0 && idx == 32)
+// 2**round(idx/2)  (except for idx == 0 & 32)
 const u16 expTable[33] = {0x0000,
   0x0001, 0x0002, 0x0003, 0x0004, 0x0006, 0x0008, 0x000b, 0x0010, 
   0x0017, 0x0020, 0x002d, 0x0040, 0x005b, 0x0080, 0x00b5, 0x0100, 
@@ -46,18 +54,19 @@ void flash(u8 count) {
   flashes_remaining = count+1;
 }
 
-u16 ledAdcTgt = 0;
-
 // calc led adc value based on batv and brightness
-// brightness ==  1 => 1.5 ma
-// brightness == 12 => 159 ma
+// dayBrightness   ==  1  =>    3 ma
+// dayBrightness   == 14  =>  300 ma
+// nightBrightness ==  1  =>  0.1 ma
+// nightBrightness == 14  =>   15 ma
 void setLedAdcTgt(u16 batteryAdc) {
   static bool offDueToLight = false;
-  u16 lightFactor;
-  u16 now = millis();
+  u16  lightFactor;
+  u16  now = millis();
 
   if(flashState == flash_active) {
-    ledAdcTgt = MAX_LED_ADC_TGT;
+    boost_set;
+    ledAdcTgt = MAX_DAY_LED_ADC_TGT;
     if ((now - lastFlashActionMs) > FLASH_DURATION_MS) {
       lastFlashActionMs = now;
       flashState = flash_pausing;
@@ -65,17 +74,17 @@ void setLedAdcTgt(u16 batteryAdc) {
     return;
   }
   if(flashState == flash_pausing) {
-    ledAdcTgt = 0;;
+    ledAdcTgt = 0;
     if ((now - lastFlashActionMs) > FLASH_DURATION_MS) {
       lastFlashActionMs = now;
       if(--flashes_remaining == 0)
            flashState = not_flashing;
       else flashState = flash_active;
     }
-    return;
+    if(flashState != not_flashing) return;
   }
 
-  if(nightLightMode) {
+  if(nightMode) {
     if(offDueToLight && 
          lightAdc < (nightlightThresh - THRESHOLD_HISTERISIS)){
       offDueToLight = false; 
@@ -85,7 +94,7 @@ void setLedAdcTgt(u16 batteryAdc) {
       offDueToLight = true;
   }
   else
-    // not nightLightMode
+    // not nightMode
     offDueToLight = false;
 
   if(offDueToLight) {
@@ -94,51 +103,57 @@ void setLedAdcTgt(u16 batteryAdc) {
   }
   // calc factor that dims brightness based on room light
   // factor is lightAdc of 700 - 800, (0.5 to 1)
-  if(lightFactor > MAX_LIGHT_ADC)       // 160
-    lightFactor = MAX_LIGHT_ADC;
-  else if (lightFactor < MIN_LIGHT_ADC) //  10
-    lightFactor = MIN_LIGHT_ADC;
-  else
-    lightFactor = (lightAdc - MIN_LIGHT_ADC);
-    
-  // rough bits per factor is ...
-  //   exptable(6) + battery(8) + adctgt(3) + light(7) => 24
-  // total(24) - maxTgt(10) => 14 bits to shift
-  // todo - measure actual
-  ledAdcTgt = ((u32) expTable[brightness] * batteryAdc * 
-                     LED_ADC_TGT_FACTOR   * lightFactor) >> 14;
-  if(ledAdcTgt > MAX_LED_ADC_TGT) 
-     ledAdcTgt = MAX_LED_ADC_TGT;
-}
+  if(nightMode) 
+    lightFactor = MAX_LIGHT_ADC; 
+  else {
+    if(lightFactor > MAX_LIGHT_ADC)       // 160
+      lightFactor = MAX_LIGHT_ADC;
+    else if (lightFactor < MIN_LIGHT_ADC) //  10
+      lightFactor = MIN_LIGHT_ADC;
+    else
+      lightFactor = (lightAdc - MIN_LIGHT_ADC);
+  }
 
-u16 pwmDebug = 0; // debug
-i16 integErr = 0; // debug, should be static in function
-u16 sensAdc;
+    lightFactor = MAX_LIGHT_ADC; // debug
+    expTableDbg = expTable[dayBrightness];
+    batteryAdcDbg = batteryAdc;
+
+  // rough bits per factor is ...
+  // boost(5) + exptable(6) + battery(8) + tgtfac(3) + light(7) => 29
+  // total(29) - maxTgt(10) => 19 bits to shift 
+  // this doesn't match measurement
+  ledAdcTgt = ((u32) expTable[nightMode? nightBrightness : dayBrightness] 
+                   * batteryAdc * LED_ADC_TGT_FACTOR * lightFactor) 
+                     >> (nightMode? 17 : 22);
+  if(!nightMode && ledAdcTgt > MAX_DAY_LED_ADC_TGT) 
+     ledAdcTgt = MAX_DAY_LED_ADC_TGT;
+
+  boost_setto(!nightMode);
+}
 
 // adjust pwm so ledAdc == ledAdcTgt
 void adjustPwm(void) {
-  // integral of error, i of pid
-  // static i16 integErr = 0;
+  // integral of error, i of pid 
+  // static i32 integErr = 0; -- debug
+  u16 maxPwm;
 
-  if(false && ledAdcTgt == 0) { 
-    integErr = 0;
-    set16(LED_PWM_, 0);
-    return; 
-  }
-  sensAdc = handleAdcInt();
+  ledAdc = handleAdcInt();
+
   // i of pid control, handleAdcInt returns led adc val
-  integErr += (ledAdcTgt - sensAdc);
+  integErr += ((i32) ledAdcTgt - ledAdc);
 
+  if(integErr < ((i32) MIN_PWM << PWM_DIV))
+     integErr = ((i32) MIN_PWM << PWM_DIV);
 
-  if(integErr < (MIN_PWM << PWM_DIV))
-     integErr = (MIN_PWM << PWM_DIV);
-
-  if(integErr > (MAX_PWM << PWM_DIV))
-     integErr = (MAX_PWM << PWM_DIV);
+  maxPwm = (nightMode? MAX_NIGHT_PWM : MAX_DAY_PWM) << PWM_DIV;
+  if(integErr > ((i32) maxPwm))
+     integErr = ((i32) maxPwm);
 
   set16(LED_PWM_, pwmDebug);
 
-  // set16(LED_PWM_, (integErr >> PWM_DIV));
+  // pwm = integErr >> PWM_DIV;
+
+  // set16(LED_PWM_, pwm);
 }
 
 // wait 10 ms for everything to stabilize
@@ -157,7 +172,7 @@ bool pwrOnStabilizing = true;
     intCounter = 0;
   }
   if(pwrOnStabilizing && (msCounter > PWR_ON_DELAY_MS)) {
-    flash(nightLightMode);
+    flash(nightMode);
     pwrOnStabilizing = false;
   }
 	if(pwrOnStabilizing) return;
@@ -212,7 +227,8 @@ void initLed(void) {
   // TIM2->TIM2_CNTRH_CNT  // Counter 2 Value (MSB)
   // TIM2->TIM2_CNTRL_CNT  // Counter 2 Value (LSB)
  
-  TIM2->PSCR = 0; // Prescaler Value (0 => 16 MHz {default})
+  // TIM2->PSCR = 0; // Prescaler Value (0 => 16 MHz {default})
+  TIM2->PSCR = 1; // Prescaler Value (0 => 16 MHz {default})
 
   // TIM2->RCR  // repetition counter not used
   // TIM2->BKR  // break input not used
@@ -223,10 +239,12 @@ void initLed(void) {
   // this doesn't change
   set16(TIM2->ARR, LED_PWM_MAX-1);
 
-// set pin low initially
-  pwm_clr;
+// set boost pin as push-pull output and clr
+  boost_set;
+  boost_out;
 
-// set pin as push-pull output
+// set pwm pin as push-pull output and clr
+  pwm_clr;
   pwm_out;
 
   // Capture/Compare Values 

@@ -6,16 +6,18 @@
 #include "led.h"
 
 // global
-bool nightLightMode   = false;
+// these values are only used in eeprom init
+bool nightMode        = false;
 u8   nightlightThresh = DEF_NIGHTLIGHT_THRESHOLD; 
-u8   brightness       = DEFAULT_BRIGHTNESS;
+u8   dayBrightness    = DEFAULT_BRIGHTNESS;
+u8   nightBrightness  = DEFAULT_BRIGHTNESS;
 
 // set pwron gpio pin low
 // this turns off 3.3v power to mcu
 // this never returns;
 void powerDown() {  
   pwron_clr;
-//  while(true;
+//  while(true; // debug
 }
 
 u8 clickCount = 0;
@@ -24,19 +26,24 @@ void clickTimeout(void) {
   if(clickCount == 1) 
     powerDown();  
   else if(clickCount >= 2) {
-    nightLightMode = !nightLightMode;
-    flash(nightLightMode);
-    setEepromByte(eeprom_mode_adr, nightLightMode);
+    nightMode = !nightMode;
+    flash(nightMode);
+    setEepromByte(eeprom_nite_mode_adr, nightMode);
   }
   clickCount = 0;
 }
 
 void adjBrightness(bool cw) {
-  if( cw && brightness < MAX_BRIGHTNESS)
-    brightness++;
-  if(!cw && brightness > 0)
-    brightness--;
-  setEepromByte(eeprom_brightness_adr, brightness);
+  if(nightMode) {
+    if( cw && nightBrightness < MAX_BRIGHTNESS) nightBrightness++;
+    if(!cw && nightBrightness > MIN_BRIGHTNESS) nightBrightness--;
+    setEepromByte(eeprom_night_brightness_adr,  nightBrightness);
+  }
+  else {
+    if( cw && dayBrightness < MAX_BRIGHTNESS) dayBrightness++;
+    if(!cw && dayBrightness > MIN_BRIGHTNESS) dayBrightness--;
+    setEepromByte(eeprom_day_brightness_adr,  dayBrightness);
+  }
 }
 
 void adjNightLightThreshold(bool cw) {
@@ -61,7 +68,7 @@ u16 lastBtnPressMs = 0;
 bool btnWaitDebounce = false;
 
 // irq6 interrupt, button pin rising edge (port D)
-@far @interrupt void buttonIntHandler() {
+@svlreg @far @interrupt void buttonIntHandler() {
   u16 now = millis();
 	
   if(pwrOnStabilizing) return;
@@ -83,25 +90,24 @@ bool btnWaitDebounce = false;
 bool encAWaitDebounce = false;
 u16  lastEncAActivity = 0;
 
-volatile u16 encIntCount    = 0; // debug
-volatile u16 cwCount        = 0; // debug
-volatile u16 ccwCount       = 0; // debug
+volatile u8 encIntCount    = 0; // debug
+volatile u8 cwCount        = 0; // debug
+volatile u8 ccwCount       = 0; // debug
+
+bool lastencAHigh = true;
 
 // irq5 interrupt, either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
-  static bool lastencAHigh = true;
   u16 now = millis();
 
   bool encAHigh       = (enca_lvl != 0);
 	bool encARisingEdge = (encAHigh && !lastencAHigh);
+	encIntCount++; // debug
 	lastencAHigh = encAHigh;
-	if(!encARisingEdge) return;  
 	
   if(pwrOnStabilizing) return;
 
-	encIntCount++;
-	
-  if(encAWaitDebounce && 
+	if(encAWaitDebounce && 
 	    ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
 	  encAWaitDebounce = false;
 
@@ -152,7 +158,7 @@ void inputLoop(void) {
   u16 now = millis();
 
   if(firstLoop) {
-    flash(nightLightMode);
+    flash(nightMode);
     firstLoop = false;
   }
   // click delay timeout starts on button release

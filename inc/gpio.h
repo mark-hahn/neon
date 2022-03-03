@@ -39,6 +39,31 @@
 #define lgtsens_lvl        (lgtsens_ptr->IDR & lgtsens_mask)
 #define lgtsens_setto(_x)   if(_x) lgtsens_set; else lgtsens_clr
 
+/////////////  boost c5 ///////////////
+#define  boost_ptr   //  GPIOC
+#define  boost_mask  // _msk5
+
+#define boost_d           boost_ptr->DDR
+#define boost_1           boost_ptr->CR1
+#define boost_2           boost_ptr->CR2
+#define boost_o           boost_ptr->ODR
+#define boost_r           &= ~boost_mask
+#define boost_s           |=  boost_mask
+#define boost_in          boost_d boost_r; boost_1 boost_r; boost_2 boost_r
+#define boost_in_int      boost_d boost_r; boost_1 boost_r; boost_2 boost_s
+#define boost_in_pu       boost_d boost_r; boost_1 boost_s; boost_2 boost_r
+#define boost_in_pu_int   boost_d boost_r; boost_1 boost_s; boost_2 boost_s
+#define boost_out_od      boost_d boost_s; boost_1 boost_r; boost_2 boost_r
+#define boost_out_od_fast boost_d boost_s; boost_1 boost_r; boost_2 boost_s
+#define boost_out         boost_d boost_s; boost_1 boost_s; boost_2 boost_r
+#define boost_out_fast    boost_d boost_s; boost_1 boost_s; boost_2 boost_s
+#define boost_set         boost_o boost_s
+#define boost_clr         boost_o boost_r
+#define boost_toggle      boost_o ^= boost_mask
+#define boost_bit        (boost_o &  boost_mask)
+#define boost_lvl        (boost_ptr->IDR & boost_mask)
+#define boost_setto(_x)   if(_x) boost_set; else boost_clr
+
 /////////////  pwm  a3 ///////////////
 #define  pwm_ptr GPIOA
 #define  pwm_mask _msk3

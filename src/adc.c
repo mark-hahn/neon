@@ -93,7 +93,7 @@ u16 handleAdcInt(void) {
       // battery under-voltage protection
       if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
 			
-      // set led adc target, uses brightness var and battery voltage
+      // set led adc target, uses brightness vars and battery voltage
       setLedAdcTgt(batteryAdc);
     }
     else

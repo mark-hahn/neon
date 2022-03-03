@@ -5,7 +5,7 @@
 #include "eeprom.h"
 
 #define EEPROM_BASE_ADDRESSS  0x4000
-#define EEPROM_CHK_BYTE       0x5c
+#define EEPROM_CHK_BYTE       0x4a
 
 // addr is 0 to 639
 void setEepromByte(u16 addr, u8 data) {
@@ -29,14 +29,16 @@ u8 getEepromByte(u16 addr) {
 
 void initEeprom(void) {
   if(getEepromByte(eeprom_chk_adr) != EEPROM_CHK_BYTE) {
-    setEepromByte(eeprom_chk_adr,         EEPROM_CHK_BYTE);
-    setEepromByte(eeprom_mode_adr,        nightLightMode);
-    setEepromByte(eeprom_brightness_adr,  brightness);
-    setEepromByte(eeprom_threshold_adr,   nightlightThresh);
+    setEepromByte(eeprom_chk_adr,             EEPROM_CHK_BYTE);
+    setEepromByte(eeprom_nite_mode_adr,       nightMode);
+    setEepromByte(eeprom_day_brightness_adr,  dayBrightness);
+    setEepromByte(eeprom_nite_brightness_adr, nightBrightness);
+    setEepromByte(eeprom_threshold_adr,       nightlightThresh);
   }
   else {
-    nightLightMode   = getEepromByte(eeprom_mode_adr);
-    brightness       = getEepromByte(eeprom_brightness_adr);
-    nightlightThresh = getEepromByte(eeprom_threshold_adr);
+    nightMode         = getEepromByte(eeprom_nite_mode_adr);
+    dayBrightness     = getEepromByte(eeprom_day_brightness_adr);
+    nightBrightness   = getEepromByte(eeprom_nite_brightness_adr);
+    nightlightThresh  = getEepromByte(eeprom_threshold_adr);
   }
 }
