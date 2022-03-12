@@ -7,9 +7,9 @@
 // eeprom addresses
 enum {
   eeprom_chk_adr,
-  eeprom_nite_mode_adr,
+  eeprom_night_mode_adr,
   eeprom_day_brightness_adr,
-  eeprom_nite_brightness_adr,
+  eeprom_night_brightness_adr,
   eeprom_threshold_adr
 };
 

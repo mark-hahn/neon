@@ -27,8 +27,7 @@ void clickTimeout(void) {
     powerDown();  
   else if(clickCount >= 2) {
     nightMode = !nightMode;
-    flash(nightMode);
-    setEepromByte(eeprom_nite_mode_adr, nightMode);
+    setEepromByte(eeprom_night_mode_adr, nightMode);
   }
   clickCount = 0;
 }
@@ -62,15 +61,22 @@ void buttonPress(void) {
   clickCount++;
 }
 
+u16 lastEncActivity = 0;
+
 #define DEBOUNCE_DELAY_MS 1  // ignore interrupts 1-2 ms after first
 u16 lastBtnPressMs = 0;
 
 bool btnWaitDebounce = false;
 
+bool inputActive = false;
+u16  lastInputActivity = 0;
+
 // irq6 interrupt, button pin rising edge (port D)
 @svlreg @far @interrupt void buttonIntHandler() {
   u16 now = millis();
-	
+  lastInputActivity = now;
+	inputActive = true;
+
   if(pwrOnStabilizing) return;
 
 	if(btnWaitDebounce && 
@@ -88,7 +94,6 @@ bool btnWaitDebounce = false;
 }
 
 bool encAWaitDebounce = false;
-u16  lastEncAActivity = 0;
 
 volatile u8 encIntCount    = 0; // debug
 volatile u8 cwCount        = 0; // debug
@@ -102,13 +107,17 @@ bool lastencAHigh = true;
 
   bool encAHigh       = (enca_lvl != 0);
 	bool encARisingEdge = (encAHigh && !lastencAHigh);
+  
 	encIntCount++; // debug
 	lastencAHigh = encAHigh;
 	
+  lastInputActivity = now;
+  inputActive = true;
+
   if(pwrOnStabilizing) return;
 
 	if(encAWaitDebounce && 
-	    ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
+	    ((now - lastEncActivity) > DEBOUNCE_DELAY_MS))
 	  encAWaitDebounce = false;
 
   if(!encAWaitDebounce) {
@@ -127,9 +136,10 @@ bool lastencAHigh = true;
       // turning knob while not pressed
       adjBrightness(cw);
     }
-    lastEncAActivity = now;
+    lastEncActivity = now;
     encAWaitDebounce = true;
   }
+
 }
 
 void initInput(void) {
@@ -157,8 +167,10 @@ void inputLoop(void) {
   static bool firstLoop = true;
   u16 now = millis();
 
+  if(inputActive && ((now-lastInputActivity) > INPUT_ACTIVE_DUR_MS))
+    inputActive = false;
+
   if(firstLoop) {
-    flash(nightMode);
     firstLoop = false;
   }
   // click delay timeout starts on button release
@@ -169,7 +181,7 @@ void inputLoop(void) {
     btnWaitDebounce = false;
 
   if(encAWaitDebounce && 
-	    ((now - lastEncAActivity) > DEBOUNCE_DELAY_MS))
+	    ((now - lastEncActivity) > DEBOUNCE_DELAY_MS))
     encAWaitDebounce = false;
 
   if(clickCount > 0 && ((now - lastPressTime) > CLICK_DELAY)) 

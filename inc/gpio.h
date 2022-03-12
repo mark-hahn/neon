@@ -40,8 +40,8 @@
 #define lgtsens_setto(_x)   if(_x) lgtsens_set; else lgtsens_clr
 
 /////////////  boost c5 ///////////////
-#define  boost_ptr   //  GPIOC
-#define  boost_mask  // _msk5
+#define  boost_ptr   GPIOC
+#define  boost_mask  _msk5
 
 #define boost_d           boost_ptr->DDR
 #define boost_1           boost_ptr->CR1

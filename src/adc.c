@@ -109,7 +109,7 @@ u16 handleAdcInt(void) {
   }
 
   // start next conversion to run between interrupts;
-  // this happens every 100 ms
+  // this happens every 500 ms
   if((now - lastAdcTime) > ADC_INTERVAL_MS) {
     if(!waitingToStartBatAdc && 
         curAdcChan == BAT_ADC_CHAN) {

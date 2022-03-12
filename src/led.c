@@ -5,20 +5,18 @@
 #include "input.h"
 #include "led.h"
 
-#define TIM2_PRESCALE    0  // clocks at full 16 MHz
-#define INTS_PER_MS     16  // pwm freq == 16 KHz (compared to 100 Hz RC)
+#define TIM2_PRESCALE    1  // clocks at 8 MHz
+#define INTS_PER_MS     16  // pwm freq == 8 KHz (compared to 200 Hz RC)
 
 #define LED_PWM_MAX   1024  // timer rolls over every 64 usecs
 #define LED_PWM_L TIM2->CCR3L
 #define LED_PWM_H TIM2->CCR3H
 
-u16 expTableDbg   = 0;
-u16 batteryAdcDbg = 0;
 u16 ledAdc;
 u16 ledAdcTgt = 0;
 i32 integErr  = 0; // debug, should be static in function
 u16 pwmDebug  = 0; // debug
-u16 pwm = 0;
+u16 pwm       = 0;
 
 volatile u16 msCounter = 0;
 
@@ -35,25 +33,6 @@ const u16 expTable[33] = {0x0000,
   0x016a, 0x0200, 0x02d4, 0x0400, 0x05a8, 0x0800, 0x0b50, 0x1000, 
   0x16a1, 0x2000, 0x2d41, 0x4000, 0x5a82, 0x8000, 0xb505, 0xffff};
 
-#define FLASH_DURATION_MS 300
-
-enum {
-  not_flashing,
-  flash_active,
-  flash_pausing
-};
-
-bool flashState = not_flashing;
-u16  lastFlashActionMs = 0;
-u8   flashes_remaining = 0;
-
-// flash led count+1 times
-void flash(u8 count) {
-  flashState        = flash_active;
-  lastFlashActionMs = millis();
-  flashes_remaining = count+1;
-}
-
 // calc led adc value based on batv and brightness
 // dayBrightness   ==  1  =>    3 ma
 // dayBrightness   == 14  =>  300 ma
@@ -61,81 +40,55 @@ void flash(u8 count) {
 // nightBrightness == 14  =>   15 ma
 void setLedAdcTgt(u16 batteryAdc) {
   static bool offDueToLight = false;
-  u16  lightFactor;
-  u16  now = millis();
+  u16 lightFactor;
+  u16 now = millis();
 
-  if(flashState == flash_active) {
-    boost_set;
-    ledAdcTgt = MAX_DAY_LED_ADC_TGT;
-    if ((now - lastFlashActionMs) > FLASH_DURATION_MS) {
-      lastFlashActionMs = now;
-      flashState = flash_pausing;
-    }
-    return;
-  }
-  if(flashState == flash_pausing) {
-    ledAdcTgt = 0;
-    if ((now - lastFlashActionMs) > FLASH_DURATION_MS) {
-      lastFlashActionMs = now;
-      if(--flashes_remaining == 0)
-           flashState = not_flashing;
-      else flashState = flash_active;
-    }
-    if(flashState != not_flashing) return;
-  }
-
-  if(nightMode) {
+  if(nightMode && !inputActive) {
     if(offDueToLight && 
-         lightAdc < (nightlightThresh - THRESHOLD_HISTERISIS)){
+         lightAdc < (nightlightThresh - THRESHOLD_HYSTERISIS)){
       offDueToLight = false; 
     }
     if(!offDueToLight && 
-         lightAdc > (nightlightThresh + THRESHOLD_HISTERISIS))
+         lightAdc > (nightlightThresh + THRESHOLD_HYSTERISIS))
       offDueToLight = true;
+      
+    if(offDueToLight) {
+      ledAdcTgt = 0;
+      return;
+    }
   }
   else
-    // not nightMode
     offDueToLight = false;
 
-  if(offDueToLight) {
-    ledAdcTgt = 0;
-    return;
-  }
   // calc factor that dims brightness based on room light
   // factor is lightAdc of 700 - 800, (0.5 to 1)
   if(nightMode) 
-    lightFactor = MAX_LIGHT_ADC; 
+    lightFactor = MAX_LIGHT_FACTOR; 
   else {
-    if(lightFactor > MAX_LIGHT_ADC)       // 160
-      lightFactor = MAX_LIGHT_ADC;
-    else if (lightFactor < MIN_LIGHT_ADC) //  10
-      lightFactor = MIN_LIGHT_ADC;
+    if(lightFactor > MAX_LIGHT_FACTOR)       // 160
+      lightFactor = MAX_LIGHT_FACTOR;
+    else if (lightFactor < MIN_LIGHT_FACTOR) //  10
+      lightFactor = MIN_LIGHT_FACTOR;
     else
-      lightFactor = (lightAdc - MIN_LIGHT_ADC);
+      lightFactor = (lightAdc - MIN_LIGHT_FACTOR);
   }
 
-    lightFactor = MAX_LIGHT_ADC; // debug
-    expTableDbg = expTable[dayBrightness];
-    batteryAdcDbg = batteryAdc;
+  lightFactor = MAX_LIGHT_FACTOR; // debug
 
   // rough bits per factor is ...
   // boost(5) + exptable(6) + battery(8) + tgtfac(3) + light(7) => 29
   // total(29) - maxTgt(10) => 19 bits to shift 
   // this doesn't match measurement
   ledAdcTgt = ((u32) expTable[nightMode? nightBrightness : dayBrightness] 
-                   * batteryAdc * LED_ADC_TGT_FACTOR * lightFactor) 
-                     >> (nightMode? 17 : 22);
-  if(!nightMode && ledAdcTgt > MAX_DAY_LED_ADC_TGT) 
-     ledAdcTgt = MAX_DAY_LED_ADC_TGT;
+                   * batteryAdc * LED_ADC_TGT_FACTOR * lightFactor) >> 17; 
 
   boost_setto(!nightMode);
 }
 
 // adjust pwm so ledAdc == ledAdcTgt
 void adjustPwm(void) {
-  // integral of error, i of pid 
+  // integral of error, I of pid 
   // static i32 integErr = 0; -- debug
-  u16 maxPwm;
 
   ledAdc = handleAdcInt();
 
@@ -145,9 +98,8 @@ void adjustPwm(void) {
   if(integErr < ((i32) MIN_PWM << PWM_DIV))
      integErr = ((i32) MIN_PWM << PWM_DIV);
 
-  maxPwm = (nightMode? MAX_NIGHT_PWM : MAX_DAY_PWM) << PWM_DIV;
-  if(integErr > ((i32) maxPwm))
-     integErr = ((i32) maxPwm);
+  if(integErr > ((i32) MAX_PWM << PWM_DIV))
+     integErr = ((i32) MAX_PWM << PWM_DIV);
 
   set16(LED_PWM_, pwmDebug);
 
@@ -159,7 +111,7 @@ void adjustPwm(void) {
 // wait 10 ms for everything to stabilize
 bool pwrOnStabilizing = true;
 
-// timer interrupts every 64 usecs
+// timer interrupts every 128 usecs
 @svlreg @far @interrupt void tim2IntHandler() {
   // used by millis()
   static u16 intCounter = 0;
@@ -172,7 +124,6 @@ bool pwrOnStabilizing = true;
     intCounter = 0;
   }
   if(pwrOnStabilizing && (msCounter > PWR_ON_DELAY_MS)) {
-    flash(nightMode);
     pwrOnStabilizing = false;
   }
 	if(pwrOnStabilizing) return;
@@ -227,8 +178,7 @@ void initLed(void) {
   // TIM2->TIM2_CNTRH_CNT  // Counter 2 Value (MSB)
   // TIM2->TIM2_CNTRL_CNT  // Counter 2 Value (LSB)
  
-  // TIM2->PSCR = 0; // Prescaler Value (0 => 16 MHz {default})
-  TIM2->PSCR = 1; // Prescaler Value (0 => 16 MHz {default})
+  TIM2->PSCR = TIM2_PRESCALE; // 1 => 8 MHz => 8 Khz rollover
 
   // TIM2->RCR  // repetition counter not used
   // TIM2->BKR  // break input not used

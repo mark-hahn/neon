@@ -5,7 +5,7 @@
 #include "main.h"
 
 // period alternating get light or battery reading
-#define ADC_INTERVAL_MS 100
+#define ADC_INTERVAL_MS 500
 
 // this protects the battery from under voltage
 // note that the adc reading goes up as voltage goes down
