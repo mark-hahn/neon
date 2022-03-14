@@ -5,7 +5,7 @@
 #include "main.h"
 
 // period alternating get light or battery reading
-#define ADC_INTERVAL_MS 500
+#define ADC_INTERVAL_MS 10
 
 // this protects the battery from under voltage
 // note that the adc reading goes up as voltage goes down
@@ -20,6 +20,6 @@ void initAdc(void);
 
 // called from timer int in led.c
 // returns led current adc
-u16 handleAdcInt(void);
+u16 handleAdc(void);
  
 #endif

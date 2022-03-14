@@ -11,7 +11,7 @@ typedef signed long  i32;
 #define set16(_reg,_val) do {                             \
          _reg##H = (_val) >> 8; _reg##L = (_val) & 0xff;} \
         while(false)
-#define get16(_reg) ((_reg##H << 8) | _reg##L)
+#define get16(_reg) (((u16) _reg##H << 8) | _reg##L)
 
 #define wait() wfi()
 

@@ -6,9 +6,9 @@
 
 // dayBrightness (0..14) 
 // the max holds with battery down to 3.35v
-#define MAX_BRIGHTNESS     14  // 159 ma
-#define DEFAULT_BRIGHTNESS 10  //  80 ma
-#define MIN_BRIGHTNESS      1  //   1 ma
+#define MAX_BRIGHTNESS     11  // 300 ma
+#define DEFAULT_BRIGHTNESS  8  // 200 ma
+#define MIN_BRIGHTNESS      1  //  night: 0.4ma, day: 15ma
 
 // todo -- measure this
 #define NIGHTLIGHT_THRESHOLD_INC  20  
@@ -16,11 +16,6 @@
 #define DEF_NIGHTLIGHT_THRESHOLD  40  
 #define MIN_NIGHTLIGHT_THRESHOLD  10
 #define THRESHOLD_HYSTERISIS      10
-
-// range used to dim day brightness
-// sets lightFactor in led.c
-#define MAX_LIGHT_FACTOR   160
-#define MIN_LIGHT_FACTOR    10
 
 extern bool nightMode;
 extern u8   nightlightThresh;

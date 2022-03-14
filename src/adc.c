@@ -12,8 +12,7 @@
 #define LED_ADC_CHAN     4
 #define LIGHT_ADC_CHAN   5
 
-// start with light off if in nightlight mode
-u16 lightAdc = 1000; 
+u16 lightAdc = 160; 
 
 void startAdc(u8 chan) {
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
@@ -22,9 +21,14 @@ void startAdc(u8 chan) {
 
 // wait for conversion to finish and return value
 u16 waitForAdc(void) {
+  u8 loByte, hiByte;
   while ((ADC1->CSR & ADC1_CSR_EOC) == 0);
   ADC1->CSR &= ~ADC1_CSR_EOC; // turn off end-of-conversion flag
-  return get16(ADC1->DR);
+  // loByte must be read first because of byte alignment
+  // so cannot use get16()
+  loByte = ADC1->DRL;
+  hiByte = ADC1->DRH;
+  return (((u16) hiByte << 8) | loByte);
 }
 
 // light or battery are converted between ints
@@ -32,8 +36,6 @@ u8   curAdcChan = BAT_ADC_CHAN;
 bool adcActive  = false;
 
 void initAdc(void) {
-  u8 i;
-
   // set gpio pins as inputs to avoid driving pins not being converted
   bsens_in;    // C4  ADC2
   cursens_in;  // D3  ADC4
@@ -66,29 +68,40 @@ void initAdc(void) {
 
   ADC1->CR1 |= ADC1_CR1_ADON; // first time only powers on
 
-  // true between handleAdcInt calls
+  // true between handleAdc calls
   // when adc started for light or battery
   adcActive  = false;
 }
 
-u16 batAdc;  // debug
+u16 batteryAdc = 100;  // debug
 
-// called from timer int in led.c
+#define ADC_HIST_LEN 32 // max 6 bits (64)
+
+u16 batAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
+u8  batAdcHistIdx = 0;
+u16 lgtAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
+u8  lgtAdcHistIdx = 0;
+
+// called from timer int in led.c every 128us
 // returns led current in adc count
 // sort of like a main loop
-u16 handleAdcInt(void) {
+u16 handleAdc(void) {
   static bool waitingToStartBatAdc = true;
   static u16 lastAdcTime = 0;
   u16 ledAdc = 0xfff; // keep pwm low at beginning
   u16 now = millis();
   
-  // battery or light conversion happens every 100 ms
+  // battery or light conversion happens every 10 ms
   // started at end of this function and finishes here
   if(adcActive) {
+    u16 adc = waitForAdc(); 
     if(curAdcChan == BAT_ADC_CHAN) {
-      u16 batteryAdc = waitForAdc(); 
-
-			batAdc = batteryAdc;
+      u8  idx;
+      u16 sum = 0;
+      batAdcHist[batAdcHistIdx++] = adc;
+      if(batAdcHistIdx == ADC_HIST_LEN) batAdcHistIdx = 0;
+      for(idx=0; idx < ADC_HIST_LEN; idx++) sum += batAdcHist[idx];
+      batteryAdc = (sum/ADC_HIST_LEN);
 			
       // battery under-voltage protection
       if(batteryAdc > BAT_UNDER_VOLTAGE_THRES) powerDown();
@@ -96,8 +109,15 @@ u16 handleAdcInt(void) {
       // set led adc target, uses brightness vars and battery voltage
       setLedAdcTgt(batteryAdc);
     }
-    else
-      lightAdc = waitForAdc(); 
+    else {
+      u8  idx;
+      u16 sum = 0;
+      lgtAdcHist[lgtAdcHistIdx++] = adc;
+      if(lgtAdcHistIdx == ADC_HIST_LEN) lgtAdcHistIdx = 0;
+      for(idx=0; idx < ADC_HIST_LEN; idx++) sum += lgtAdcHist[idx];
+      lightAdc = (sum/ADC_HIST_LEN);
+    }
+
     lastAdcTime = now;
     adcActive   = false;
   }

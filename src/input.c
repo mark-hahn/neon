@@ -107,10 +107,12 @@ bool lastencAHigh = true;
 
   bool encAHigh       = (enca_lvl != 0);
 	bool encARisingEdge = (encAHigh && !lastencAHigh);
+	lastencAHigh = encAHigh;
+  if(!encARisingEdge) return;
   
 	encIntCount++; // debug
-	lastencAHigh = encAHigh;
-	
+
+
   lastInputActivity = now;
   inputActive = true;
 

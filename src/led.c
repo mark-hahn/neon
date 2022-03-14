@@ -5,18 +5,14 @@
 #include "input.h"
 #include "led.h"
 
-#define TIM2_PRESCALE    1  // clocks at 8 MHz
-#define INTS_PER_MS     16  // pwm freq == 8 KHz (compared to 200 Hz RC)
-
-#define LED_PWM_MAX   1024  // timer rolls over every 64 usecs
-#define LED_PWM_L TIM2->CCR3L
-#define LED_PWM_H TIM2->CCR3H
-
 u16 ledAdc;
 u16 ledAdcTgt = 0;
-i32 integErr  = 0; // debug, should be static in function
-u16 pwmDebug  = 0; // debug
-u16 pwm       = 0;
+
+ // debug, should be static in function
+i32 integErr    = 0;
+u16 pwmDebug    = 512;
+i16 pwm         = 0;
+i32 lightFactor = 160;
 
 volatile u16 msCounter = 0;
 
@@ -40,7 +36,6 @@ const u16 expTable[33] = {0x0000,
 // nightBrightness == 14  =>   15 ma
 void setLedAdcTgt(u16 batteryAdc) {
   static bool offDueToLight = false;
-  u16 lightFactor;
   u16 now = millis();
 
   if(nightMode && !inputActive) {
@@ -60,52 +55,52 @@ void setLedAdcTgt(u16 batteryAdc) {
   else
     offDueToLight = false;
 
-  // calc factor that dims brightness based on room light
-  // factor is lightAdc of 700 - 800, (0.5 to 1)
-  if(nightMode) 
-    lightFactor = MAX_LIGHT_FACTOR; 
+  if(nightMode) lightFactor = MAX_LIGHT_FACTOR; 
   else {
+    lightFactor = lightAdc;
     if(lightFactor > MAX_LIGHT_FACTOR)       // 160
       lightFactor = MAX_LIGHT_FACTOR;
     else if (lightFactor < MIN_LIGHT_FACTOR) //  10
       lightFactor = MIN_LIGHT_FACTOR;
-    else
-      lightFactor = (lightAdc - MIN_LIGHT_FACTOR);
   }
-
-  lightFactor = MAX_LIGHT_FACTOR; // debug
-
-  // rough bits per factor is ...
-  // boost(5) + exptable(6) + battery(8) + tgtfac(3) + light(7) => 29
-  // total(29) - maxTgt(10) => 19 bits to shift 
-  // this doesn't match measurement
-  ledAdcTgt = ((u32) expTable[nightMode? nightBrightness : dayBrightness] 
-                   * batteryAdc * LED_ADC_TGT_FACTOR * lightFactor) >> 17; 
+  
+  ledAdcTgt = ((u32) expTable[nightMode ? nightBrightness : dayBrightness] 
+                       * batteryAdc * lightFactor) >> 13; 
 
   boost_setto(!nightMode);
 }
+
+// debug
+i32 ledAdcErr = 0;
+u8  Ik = 8;
+u8  Pk = 2;
+i32 IContrib = 0;
+i32 PContrib = 0;
 
 // adjust pwm so ledAdc == ledAdcTgt
 void adjustPwm(void) {
   // integral of error, I of pid 
   // static i32 integErr = 0; -- debug
+  
+  ledAdc = handleAdc();
 
-  ledAdc = handleAdcInt();
+  ledAdcErr = ((i32) ledAdc - (i32) ledAdcTgt);
+	
+  integErr += -ledAdcErr;
+  if(integErr < MIN_INTEGRAL) integErr = MIN_INTEGRAL;
+  if(integErr > MAX_INTEGRAL) integErr = MAX_INTEGRAL;
+	IContrib = integErr >> Ik;
+	
+	PContrib = -(ledAdcErr << Pk);
+	
+  pwm = (IContrib + PContrib);
 
-  // i of pid control, handleAdcInt returns led adc val
-  integErr += ((i32) ledAdcTgt - ledAdc);
+  if(pwm > MAX_PWM) pwm = MAX_PWM;
+  if(pwm < MIN_PWM) pwm = MIN_PWM;
 
-  if(integErr < ((i32) MIN_PWM << PWM_DIV))
-     integErr = ((i32) MIN_PWM << PWM_DIV);
+  // set16(LED_PWM_, pwmDebug);
 
-  if(integErr > ((i32) MAX_PWM << PWM_DIV))
-     integErr = ((i32) MAX_PWM << PWM_DIV);
-
-  set16(LED_PWM_, pwmDebug);
-
-  // pwm = integErr >> PWM_DIV;
-
-  // set16(LED_PWM_, pwm);
+  set16(LED_PWM_, pwm);
 }
 
 // wait 10 ms for everything to stabilize
