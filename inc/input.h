@@ -4,11 +4,15 @@
 #include "stm8s.h"
 #include "main.h"
 
+// max times between clicks for dbl-click: 500 ms
+#define CLICK_DELAY  500  
+#define DEBOUNCE_DELAY_MS 1  // ignore interrupts 1-2 ms after first
+
 // dayBrightness (1..9) 
 // the max holds with battery down to 3.35v
-#define MAX_BRIGHTNESS      11  // 250 ma
-#define DEFAULT_BRIGHTNESS  11  // 250 ma
-#define MIN_BRIGHTNESS       1  //  night: 0.4ma, day: 15ma
+#define MAX_BRIGHTNESS      8  // 250 ma
+#define DEFAULT_BRIGHTNESS  8  // 250 ma
+#define MIN_BRIGHTNESS      1  //  night: 0.4ma, day: 15ma
 
 #define NIGHTLIGHT_THRESHOLD_INC   10  
 #define MAX_NIGHTLIGHT_THRESHOLD  600

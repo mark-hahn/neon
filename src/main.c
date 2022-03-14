@@ -26,5 +26,4 @@ void main(void) {
   // everything is interrupt driven
   // so from now on all code runs in int mode
   // waits in low-power wait mode between interrupts
-	while(true) wfi();
-}
+	while(true) wfi();}

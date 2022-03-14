@@ -78,6 +78,8 @@ void initAdc(void) {
 
 #define ADC_HIST_LEN 32 // max 6 bits (64)
 
+  u16 batteryAdc = 150; // debug -- belongs in handleAdc
+
 // called from timer int in led.c every 128us
 // returns led current in adc count
 // sort of like a main loop
@@ -92,7 +94,6 @@ u16 handleAdc(void) {
   static bool waitingToStartBatAdc = true;
   static u16 lastAdcTime = 0;
   u16 ledAdc     = 0xfff;   // keep pwm low at beginning
-  u16 batteryAdc = 150;
   u16 now = millis();
   
   // battery or light conversion happens every 10 ms

@@ -12,15 +12,10 @@ u16  nightThresh      = DEF_NIGHTLIGHT_THRESHOLD;
 u8   dayBrightness    = DEFAULT_BRIGHTNESS;
 u8   nightBrightness  = DEFAULT_BRIGHTNESS;
 
-// set pwron gpio pin low
-// this turns off 3.3v power to mcu
-// this never returns;
 void powerDown() {  
-  static bool ignoringFirstClick = true;
-  if(ignoringFirstClick) {
-    ignoringFirstClick = false;
-    return;
-  }
+  // set pwron gpio pin low
+  // this turns off 3.3v power to mcu
+  // so this never returns;
   pwron_clr;
   while(true);
 }
@@ -28,6 +23,13 @@ void powerDown() {
 u8 clickCount = 0;
 
 void clickTimeout(void) {
+  static bool ignoringFirstClick = true;
+  if(ignoringFirstClick) {
+    ignoringFirstClick = false;
+    clickCount = 0;
+    return;
+  }
+  
   if(nightMode && BUTTON_DOWN) {
     clickCount = 0;
     return;
@@ -74,15 +76,10 @@ void buttonPress(void) {
   lastPressTime = millis();
   clickCount++;
 }
-
 u16 lastEncActivity = 0;
-
-#define DEBOUNCE_DELAY_MS 1  // ignore interrupts 1-2 ms after first
 u16 lastBtnPressMs = 0;
-
 bool btnWaitDebounce = false;
-
-bool inputActive = false;
+bool inputActive = true;
 u16  lastInputActivity = 0;
 
 // irq6 interrupt, button pin rising edge (port D)
@@ -140,8 +137,8 @@ bool encAWaitDebounce = false;
       // turning knob while not pressed
       adjBrightness(cw);
     }
-    lastEncActivity = now;
-    encAWaitDebounce = true;
+    // lastEncActivity = now;
+    // encAWaitDebounce = true;
   }
 
 }
@@ -160,10 +157,10 @@ void initInput(void) {
 
   // all gpio ports interrupt on rising edge only
   EXTI->CR1 = 0x55;
-}
 
-// 300 ms timeout for counting clicks
-#define CLICK_DELAY  300  
+  // lastInputActivity = millis();
+  // inputActive = true;
+}
 
 // called every timer interrupt (500 usecs) from led.c
 void inputLoop(void) {

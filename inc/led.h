@@ -17,7 +17,7 @@
 
 // PID constants, always power of 2 for calc speed
 #define Ik  8  // divide   PID integral by 2**Ik
-#define Pk  2  // multiply PID error    by 2**Pk
+#define Pk  4  // multiply PID error    by 2**Pk
 
 #define MIN_INTEGRAL  (((i32) MIN_PWM) << Ik)
 #define MAX_INTEGRAL  (((i32) MAX_PWM) << Ik)
@@ -27,8 +27,8 @@
 #define MIN_LIGHT_FACTOR    20
  
 // led adc target is multiplied by 6/2**18 
-#define ADC_TGT_ADJ      6
-#define ADC_TGT_FACTOR  18
+#define ADC_TGT_ADJ     67
+#define ADC_TGT_FACTOR  20
 
 // returns elapsed ms, rolls over every 65 secs
 u16 millis(void);
