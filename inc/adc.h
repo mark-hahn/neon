@@ -7,12 +7,10 @@
 // period alternating get light or battery reading
 #define ADC_INTERVAL_MS 10
 
+// vcc powers down when battery adc higher than this
 // this protects the battery from under voltage
 // note that the adc reading goes up as voltage goes down
-// measured 3v drop-out, with 160 threshold adc
-// diode drop is (3/1024)*160 => 0.47v
-// 47k is too low for diode pull-up
-#define BAT_UNDER_VOLTAGE_THRES 160
+#define BAT_UNDER_VOLTAGE_THRES 155
 
 extern u16 lightAdc; 
 

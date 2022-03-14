@@ -13,8 +13,6 @@ void main(void) {
   pwron_set;
   pwron_out;
 
-//  while(true);  // disable mcu -- debug
-	
   // switch high-speed internal oscillator (HSI) to full-speed
   CLK->CKDIVR   = 0;
 
@@ -23,23 +21,10 @@ void main(void) {
   initAdc();
   initLed();
 
-  ints_on; // enable all interrupts
-	
-	// debug, cpu always running
-	// needed for debugging and to see power when not debugging
-  while(true);  
+  enableInterrupts(); 
 
   // everything is interrupt driven
   // so from now on all code runs in int mode
-  // waits in low-power wait mode until interrupt
-	
-// while(true) wait();
+  // waits in low-power wait mode between interrupts
+	while(true) wfi();
 }
-
-// #define DBG_BUF_SIZE 256
-// u8 @near dbgBuf[DBG_BUF_SIZE];
-// u16 dbgBufIdx = 0;
-// void trace(u8 byte) {
-//   dbgBuf[dbgBufIdx++] = byte;
-//   if(dbgBufIdx == DBG_BUF_SIZE) dbgBufIdx = 0;
-// }

@@ -5,7 +5,7 @@
 #include "eeprom.h"
 
 #define EEPROM_BASE_ADDRESSS  0x4000
-#define EEPROM_CHK_BYTE       0x4a
+#define EEPROM_CHK_BYTE       0x4b
 
 // addr is 0 to 639
 void setEepromByte(u16 addr, u8 data) {
@@ -29,11 +29,11 @@ u8 getEepromByte(u16 addr) {
 
 void initEeprom(void) {
   if(getEepromByte(eeprom_chk_adr) != EEPROM_CHK_BYTE) {
-    setEepromByte(eeprom_chk_adr,             EEPROM_CHK_BYTE);
+    setEepromByte(eeprom_chk_adr,              EEPROM_CHK_BYTE);
     setEepromByte(eeprom_night_mode_adr,       nightMode);
-    setEepromByte(eeprom_day_brightness_adr,  dayBrightness);
+    setEepromByte(eeprom_day_brightness_adr,   dayBrightness);
     setEepromByte(eeprom_night_brightness_adr, nightBrightness);
-    setEepromByte(eeprom_threshold_adr,       nightlightThresh);
+    setEepromByte(eeprom_threshold_adr,        nightlightThresh);
   }
   else {
     nightMode         = getEepromByte(eeprom_night_mode_adr);

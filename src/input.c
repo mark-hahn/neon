@@ -5,8 +5,8 @@
 #include "input.h"
 #include "led.h"
 
-// global
-// these values are only used in eeprom init
+// vars stored in eeprom
+// these initial values are only used in eeprom init
 bool nightMode        = false;
 u8   nightlightThresh = DEF_NIGHTLIGHT_THRESHOLD; 
 u8   dayBrightness    = DEFAULT_BRIGHTNESS;
@@ -17,7 +17,7 @@ u8   nightBrightness  = DEFAULT_BRIGHTNESS;
 // this never returns;
 void powerDown() {  
   pwron_clr;
-  while(true; // debug
+  while(true);
 }
 
 u8 clickCount = 0;
@@ -94,25 +94,20 @@ u16  lastInputActivity = 0;
 }
 
 bool encAWaitDebounce = false;
-
-volatile u8 encIntCount    = 0; // debug
-volatile u8 cwCount        = 0; // debug
-volatile u8 ccwCount       = 0; // debug
-
-bool lastencAHigh = true;
+bool lastencAHigh     = true;
 
 // irq5 interrupt, either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
   u16 now = millis();
+
+  lastInputActivity = now;
+	inputActive = true;
 
   bool encAHigh       = (enca_lvl != 0);
 	bool encARisingEdge = (encAHigh && !lastencAHigh);
 	lastencAHigh = encAHigh;
   if(!encARisingEdge) return;
   
-	encIntCount++; // debug
-
-
   lastInputActivity = now;
   inputActive = true;
 
@@ -124,10 +119,6 @@ bool lastencAHigh = true;
 
   if(!encAWaitDebounce) {
 		bool cw = encb_lvl;
-		
-		// debug
-    if(cw) cwCount++;
-    else   ccwCount++;
 
     if(BUTTON_DOWN) {
 		  // turning knob while knob pressed
@@ -163,18 +154,13 @@ void initInput(void) {
 // 300 ms timeout for counting clicks
 #define CLICK_DELAY  300  
 
-// called every timer interrupt (64 usecs) from led.c
-// runs at highest interrupt priority
+// called every timer interrupt (500 usecs) from led.c
 void inputLoop(void) {
-  static bool firstLoop = true;
   u16 now = millis();
 
   if(inputActive && ((now-lastInputActivity) > INPUT_ACTIVE_DUR_MS))
     inputActive = false;
 
-  if(firstLoop) {
-    firstLoop = false;
-  }
   // click delay timeout starts on button release
   if(BUTTON_DOWN) lastBtnPressMs = now;
 

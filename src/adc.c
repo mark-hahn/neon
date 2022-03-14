@@ -22,10 +22,12 @@ void startAdc(u8 chan) {
 // wait for conversion to finish and return value
 u16 waitForAdc(void) {
   u8 loByte, hiByte;
+
+  // wait for conversion to finish
   while ((ADC1->CSR & ADC1_CSR_EOC) == 0);
   ADC1->CSR &= ~ADC1_CSR_EOC; // turn off end-of-conversion flag
+
   // loByte must be read first because of byte alignment
-  // so cannot use get16()
   loByte = ADC1->DRL;
   hiByte = ADC1->DRH;
   return (((u16) hiByte << 8) | loByte);
@@ -73,8 +75,6 @@ void initAdc(void) {
   adcActive  = false;
 }
 
-u16 batteryAdc = 100;  // debug
-
 #define ADC_HIST_LEN 32 // max 6 bits (64)
 
 u16 batAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
@@ -88,7 +88,8 @@ u8  lgtAdcHistIdx = 0;
 u16 handleAdc(void) {
   static bool waitingToStartBatAdc = true;
   static u16 lastAdcTime = 0;
-  u16 ledAdc = 0xfff; // keep pwm low at beginning
+  u16 ledAdc     = 0xfff;   // keep pwm low at beginning
+  u16 batteryAdc = 150;
   u16 now = millis();
   
   // battery or light conversion happens every 10 ms
