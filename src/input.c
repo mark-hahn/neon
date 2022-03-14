@@ -94,20 +94,17 @@ u16  lastInputActivity = 0;
 }
 
 bool encAWaitDebounce = false;
-bool lastencAHigh     = true;
 
 // irq5 interrupt, either encoder pin rising edge (port C)
 @far @interrupt void encoderIntHandler() {
+  static bool lastencAHigh = true;
   u16 now = millis();
-
-  lastInputActivity = now;
-	inputActive = true;
 
   bool encAHigh       = (enca_lvl != 0);
 	bool encARisingEdge = (encAHigh && !lastencAHigh);
 	lastencAHigh = encAHigh;
   if(!encARisingEdge) return;
-  
+
   lastInputActivity = now;
   inputActive = true;
 
