@@ -38,12 +38,18 @@ void setLedAdcTgt(u16 batteryAdc) {
   static bool offDueToLight = false;
   u16 now = millis();
 
-  if(nightMode && !inputActive) {
-    if(offDueToLight && 
+  if(nightMode) {
+    if(BUTTON_DOWN) {
+      offDueToLight = (lightAdc > (nightlightThresh));
+    }
+    else if(inputActive) {
+      offDueToLight = false;
+    }
+    else if(offDueToLight && 
          lightAdc < (nightlightThresh - THRESHOLD_HYSTERISIS)){
       offDueToLight = false; 
     }
-    if(!offDueToLight && 
+    else if(!offDueToLight && 
          lightAdc > (nightlightThresh + THRESHOLD_HYSTERISIS))
       offDueToLight = true;
       

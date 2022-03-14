@@ -17,7 +17,7 @@ u8   nightBrightness  = DEFAULT_BRIGHTNESS;
 // this never returns;
 void powerDown() {  
   pwron_clr;
-//  while(true; // debug
+  while(true; // debug
 }
 
 u8 clickCount = 0;
@@ -80,8 +80,8 @@ u16  lastInputActivity = 0;
   if(pwrOnStabilizing) return;
 
 	if(btnWaitDebounce && 
-		((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
-	btnWaitDebounce = false;
+		   ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
+	  btnWaitDebounce = false;
 
   if(!btnWaitDebounce) {
     // level should always be high since only interrupts on rising edge
@@ -129,7 +129,7 @@ bool lastencAHigh = true;
     if(cw) cwCount++;
     else   ccwCount++;
 
-    if(button_lvl) {
+    if(BUTTON_DOWN) {
 		  // turning knob while knob pressed
       // set nightlight light threshold
       adjNightLightThreshold(cw);
@@ -176,7 +176,7 @@ void inputLoop(void) {
     firstLoop = false;
   }
   // click delay timeout starts on button release
-  if(button_lvl) lastBtnPressMs = now;
+  if(BUTTON_DOWN) lastBtnPressMs = now;
 
   if(btnWaitDebounce && 
 	    ((now - lastBtnPressMs) > DEBOUNCE_DELAY_MS))
