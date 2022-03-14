@@ -8,7 +8,7 @@
 // vars stored in eeprom
 // these initial values are only used in eeprom init
 bool nightMode        = false;
-u8   nightlightThresh = DEF_NIGHTLIGHT_THRESHOLD; 
+u16  nightThresh      = DEF_NIGHTLIGHT_THRESHOLD; 
 u8   dayBrightness    = DEFAULT_BRIGHTNESS;
 u8   nightBrightness  = DEFAULT_BRIGHTNESS;
 
@@ -16,6 +16,11 @@ u8   nightBrightness  = DEFAULT_BRIGHTNESS;
 // this turns off 3.3v power to mcu
 // this never returns;
 void powerDown() {  
+  static bool ignoringFirstClick = true;
+  if(ignoringFirstClick) {
+    ignoringFirstClick = false;
+    return;
+  }
   pwron_clr;
   while(true);
 }
@@ -23,9 +28,14 @@ void powerDown() {
 u8 clickCount = 0;
 
 void clickTimeout(void) {
-  if(clickCount == 1) 
-    powerDown();  
-  else if(clickCount >= 2) {
+  if(nightMode && BUTTON_DOWN) {
+    clickCount = 0;
+    return;
+  }
+
+  if(clickCount == 1) powerDown(); 
+
+  if(clickCount >= 2) {
     nightMode = !nightMode;
     setEepromByte(eeprom_night_mode_adr, nightMode);
   }
@@ -47,11 +57,15 @@ void adjBrightness(bool cw) {
 
 void adjNightLightThreshold(bool cw) {
   // turning up threshold makes led turn on
-  if( cw && nightlightThresh < MAX_NIGHTLIGHT_THRESHOLD)
-      nightlightThresh += NIGHTLIGHT_THRESHOLD_INC;
-  if(!cw && nightlightThresh > MIN_NIGHTLIGHT_THRESHOLD) 
-      nightlightThresh -= NIGHTLIGHT_THRESHOLD_INC;
-  setEepromByte(eeprom_threshold_adr, nightlightThresh);
+  if(cw) nightThresh += NIGHTLIGHT_THRESHOLD_INC;
+  else   nightThresh -= NIGHTLIGHT_THRESHOLD_INC;
+  
+  if(nightThresh > MAX_NIGHTLIGHT_THRESHOLD) // 400
+     nightThresh = MAX_NIGHTLIGHT_THRESHOLD;
+  if(nightThresh < MIN_NIGHTLIGHT_THRESHOLD) //  20
+     nightThresh = MIN_NIGHTLIGHT_THRESHOLD;
+      
+  setEepromByte(eeprom_threshold_adr, ((u8) (nightThresh >> 2)));
 }
 
 u16 lastPressTime = 0;

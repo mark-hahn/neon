@@ -1,4 +1,3 @@
-
 #include "stm8s.h"
 #include "main.h"
 #include "gpio.h"
@@ -12,7 +11,9 @@
 #define LED_ADC_CHAN     4
 #define LIGHT_ADC_CHAN   5
 
-u16 lightAdc = 160; 
+// global ambient light adc value
+// ranges from 50 to 950
+u16 lightAdc = 600; 
 
 void startAdc(u8 chan) {
   ADC1->CSR  = (ADC1->CSR & ~CH_MASK) | chan;
@@ -77,15 +78,17 @@ void initAdc(void) {
 
 #define ADC_HIST_LEN 32 // max 6 bits (64)
 
-u16 batAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
-u8  batAdcHistIdx = 0;
-u16 lgtAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
-u8  lgtAdcHistIdx = 0;
-
 // called from timer int in led.c every 128us
 // returns led current in adc count
 // sort of like a main loop
 u16 handleAdc(void) {
+
+  // filter light and battery over 32 samples
+  static u16 batAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
+  static u8  batAdcHistIdx = 0;
+  static u16 lgtAdcHist[ADC_HIST_LEN] = {BAT_UNDER_VOLTAGE_THRES};  
+  static u8  lgtAdcHistIdx = 0;
+
   static bool waitingToStartBatAdc = true;
   static u16 lastAdcTime = 0;
   u16 ledAdc     = 0xfff;   // keep pwm low at beginning

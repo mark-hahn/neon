@@ -10,7 +10,7 @@
 // vcc powers down when battery adc higher than this
 // this protects the battery from under voltage
 // note that the adc reading goes up as voltage goes down
-#define BAT_UNDER_VOLTAGE_THRES 155
+#define BAT_UNDER_VOLTAGE_THRES 165
 
 extern u16 lightAdc; 
 

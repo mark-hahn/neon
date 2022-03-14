@@ -23,11 +23,12 @@
 #define MAX_INTEGRAL  (((i32) MAX_PWM) << Ik)
 
 // range used to dim day brightness
-#define MAX_LIGHT_FACTOR   240
-#define MIN_LIGHT_FACTOR    10
-
-// led adc target is scaled by dividing by 2**13
-#define ADC_TGT_FACTOR  13
+#define MAX_LIGHT_FACTOR   900
+#define MIN_LIGHT_FACTOR    20
+ 
+// led adc target is multiplied by 6/2**18 
+#define ADC_TGT_ADJ      6
+#define ADC_TGT_FACTOR  18
 
 // returns elapsed ms, rolls over every 65 secs
 u16 millis(void);

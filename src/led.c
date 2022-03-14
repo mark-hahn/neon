@@ -35,17 +35,17 @@ void setLedAdcTgt(u16 batteryAdc) {
 
   if(nightMode) {
     if(BUTTON_DOWN) {
-      offDueToLight = (lightAdc > (nightlightThresh));
+      offDueToLight = (lightAdc > (nightThresh));
     }
     else if(inputActive) {
       offDueToLight = false;
     }
     else if(offDueToLight && 
-         lightAdc < (nightlightThresh - THRESHOLD_HYSTERISIS)){
+         lightAdc < (nightThresh - THRESHOLD_HYSTERISIS)){
       offDueToLight = false; 
     }
     else if(!offDueToLight && 
-         lightAdc > (nightlightThresh + THRESHOLD_HYSTERISIS))
+         lightAdc > (nightThresh + THRESHOLD_HYSTERISIS))
       offDueToLight = true;
       
     if(offDueToLight) {
@@ -59,14 +59,14 @@ void setLedAdcTgt(u16 batteryAdc) {
   if(nightMode) lightFactor = MAX_LIGHT_FACTOR; 
   else {
     lightFactor = lightAdc;
-    if(lightFactor > MAX_LIGHT_FACTOR)       // 240
+    if(lightFactor > MAX_LIGHT_FACTOR)       // 900
       lightFactor = MAX_LIGHT_FACTOR;
-    else if (lightFactor < MIN_LIGHT_FACTOR) //  10
+    else if (lightFactor < MIN_LIGHT_FACTOR) //  20
       lightFactor = MIN_LIGHT_FACTOR;
   }
   
   ledAdcTgt = ((u32) expTable[nightMode ? nightBrightness : dayBrightness] 
-                       * batteryAdc * lightFactor) >> ADC_TGT_FACTOR; 
+              * batteryAdc * lightFactor * ADC_TGT_ADJ) >> ADC_TGT_FACTOR; 
 
   boost_setto(!nightMode);
 }
